@@ -1,0 +1,29 @@
+{
+  "name": "warga-discord",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pixel office that shows live Discord activity",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "server": "node --env-file-if-exists=.env server/index.mjs",
+    "build": "tsc --noEmit && vite build",
+    "start": "node --env-file-if-exists=.env server/index.mjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "discord.js": "14.27.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "@vitejs/plugin-react": "6.0.5",
+    "typescript": "5.9.3",
+    "vite": "8.2.0"
+  },
+  "engines": {
+    "node": ">=22.9"
+  }
+}

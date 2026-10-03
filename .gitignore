@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.local
+.gstack/
+agents
+workflows
+.env
+server/data/
