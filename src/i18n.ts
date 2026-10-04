@@ -8,9 +8,11 @@
  * while `app/game/office-world.ts` directly stores theme, furniture, and amenity-space names as `LocalizedText`.
  */
 
-export const LOCALES = ["en", "zh", "ko", "vi", "id"] as const;
+/** In the order the language picker lists them. */
+export const LOCALES = ["id", "en", "zh", "ko", "vi"] as const;
 export type Locale = (typeof LOCALES)[number];
-export const DEFAULT_LOCALE: Locale = "en";
+/** What a visitor sees until they pick a language, and the fallback for a value that is not a known locale. */
+export const DEFAULT_LOCALE: Locale = "id";
 
 /** Display names attached to data. Compilation fails if any language is missing. */
 export type LocalizedText = Readonly<Record<Locale, string>>;
@@ -105,6 +107,7 @@ const ko = {
   "layout.saved": "사무실 배치를 저장했습니다.",
   "layout.savedStale": "이전 배치는 저장됐습니다. 새 변경 사항을 다시 저장해 주세요.",
   "layout.saveFailed": "사무실 배치를 저장하지 못했습니다. 다시 시도해 주세요.",
+  "layout.needAdmin": "저장하려면 관리자 비밀번호가 필요합니다. 먼저 Room settings에서 로그인하세요. 그 전까지 변경 사항은 이 화면에만 보입니다.",
 } as const;
 
 export type MessageKey = keyof typeof ko;
@@ -181,6 +184,7 @@ const en: Record<MessageKey, string> = {
   "layout.saved": "Saved the office layout.",
   "layout.savedStale": "The earlier layout was saved. Save your new changes again.",
   "layout.saveFailed": "Could not save the office layout. Please try again.",
+  "layout.needAdmin": "Saving needs the admin password: sign in under Room settings first. Until then the change only shows on this screen.",
 };
 
 const zh: Record<MessageKey, string> = {
@@ -255,6 +259,7 @@ const zh: Record<MessageKey, string> = {
   "layout.saved": "已保存办公室布局。",
   "layout.savedStale": "之前的布局已保存，请重新保存新的更改。",
   "layout.saveFailed": "无法保存办公室布局，请重试。",
+  "layout.needAdmin": "保存需要管理员密码：请先在 Room settings 中登录。在此之前，更改只显示在此屏幕上。",
 };
 
 const vi: Record<MessageKey, string> = {
@@ -329,6 +334,7 @@ const vi: Record<MessageKey, string> = {
   "layout.saved": "Đã lưu bố cục văn phòng.",
   "layout.savedStale": "Bố cục trước đó đã được lưu. Hãy lưu lại các thay đổi mới.",
   "layout.saveFailed": "Không lưu được bố cục văn phòng. Vui lòng thử lại.",
+  "layout.needAdmin": "Cần mật khẩu quản trị để lưu: hãy đăng nhập trong Room settings trước. Trước đó, thay đổi chỉ hiển thị trên màn hình này.",
 };
 
 const id: Record<MessageKey, string> = {
@@ -403,6 +409,7 @@ const id: Record<MessageKey, string> = {
   "layout.saved": "Tata letak kantor tersimpan.",
   "layout.savedStale": "Tata letak sebelumnya tersimpan. Simpan lagi perubahan baru Anda.",
   "layout.saveFailed": "Tidak bisa menyimpan tata letak kantor. Silakan coba lagi.",
+  "layout.needAdmin": "Menyimpan butuh kata sandi admin: masuk dulu lewat Pengaturan ruangan. Sebelum itu, perubahan hanya tampil di layar ini.",
 };
 
 export const MESSAGES: Record<Locale, Record<MessageKey, string>> = { ko, en, zh, vi, id };

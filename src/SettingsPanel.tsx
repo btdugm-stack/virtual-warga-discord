@@ -1,12 +1,10 @@
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { adminToken, storeAdminToken } from "./discord/admin";
 import { COPY } from "./discord/copy";
 import { SLOT_COUNT, SLOT_LABEL_MAX, type AdminConfig, type RoomKind, type Slot } from "./discord/types";
 import { ROOM_ZONES } from "./game/office-world";
 import { localized, type Locale, type LocalizedText } from "./i18n";
-
-/** The admin token is kept for the tab only: closing the tab signs out. */
-const TOKEN_STORAGE_KEY = "warga.admin";
 
 /** A slot as the form holds it: every field present, so switching kinds never loses what was picked. */
 type Draft = { kind: RoomKind; guildId: string; channelId: string; label: string };
@@ -38,23 +36,6 @@ function slotOf(draft: Draft): Slot | null {
   return draft.channelId ? { kind: "channel", guildId: draft.guildId, channelId: draft.channelId, ...named } : null;
 }
 
-function storedToken() {
-  try {
-    return window.sessionStorage.getItem(TOKEN_STORAGE_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function storeToken(token: string | null) {
-  try {
-    if (token) window.sessionStorage.setItem(TOKEN_STORAGE_KEY, token);
-    else window.sessionStorage.removeItem(TOKEN_STORAGE_KEY);
-  } catch {
-    // Without storage the token still works until the panel closes.
-  }
-}
-
 /** Status 0 stands for "no answer at all". */
 async function request<T>(path: string, token: string | null, method = "GET", body?: unknown): Promise<{ status: number; data: T | null }> {
   try {
@@ -74,7 +55,7 @@ async function request<T>(path: string, token: string | null, method = "GET", bo
 
 export function SettingsPanel({ locale, onClose }: { locale: Locale; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const [token, setToken] = useState(storedToken);
+  const [token, setToken] = useState(adminToken);
   const [password, setPassword] = useState("");
   const [config, setConfig] = useState<AdminConfig | null>(null);
   const [drafts, setDrafts] = useState<readonly Draft[]>([]);
@@ -87,7 +68,7 @@ export function SettingsPanel({ locale, onClose }: { locale: Locale; onClose: ()
   }, []);
 
   const signOut = useCallback((text: LocalizedText) => {
-    storeToken(null);
+    storeAdminToken(null);
     setToken(null);
     setConfig(null);
     setNotice({ text, bad: true });
@@ -119,7 +100,7 @@ export function SettingsPanel({ locale, onClose }: { locale: Locale; onClose: ()
     const { status, data } = await request<{ token: string }>("/api/admin/login", null, "POST", { password });
     setBusy(false);
     if (data) {
-      storeToken(data.token);
+      storeAdminToken(data.token);
       setToken(data.token);
       setPassword("");
       setNotice(null);

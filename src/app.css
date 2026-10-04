@@ -425,6 +425,177 @@
   gap: 8px;
 }
 
+/*
+ * The furniture editor lives in the side dock while it is open, in place of the feed and roster.
+ * Laid over the floor it hid the rooms on the right, which then could not be furnished.
+ */
+.editor-host {
+  display: none;
+  min-height: 0;
+  overflow: auto;
+  /* Keep focused and scrolled-to controls clear of the pinned status line and footer. */
+  scroll-padding-block: 64px 96px;
+}
+
+/* The lobby strip is decoration. While editing, its height goes to the floor, where the tiles need to be big enough to aim at. */
+.office-world.editor-open .office-world-body {
+  --lobby-h: 0px;
+}
+
+.office-world.editor-open .office-lobby {
+  display: none;
+}
+
+.work-dock[data-editing="true"] {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.work-dock[data-editing="true"] > .feed-panel,
+.work-dock[data-editing="true"] > .roster-panel {
+  display: none;
+}
+
+.work-dock[data-editing="true"] > .editor-host {
+  display: block;
+}
+
+.editor-host .office-editor {
+  position: static;
+  width: auto;
+  margin: 0;
+  padding: 0 14px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.editor-host .office-editor-heading {
+  flex-direction: row;
+  padding-top: 12px;
+}
+
+/* The whole dock scrolls, so the catalog no longer needs a scroll box of its own. */
+.editor-host .office-furniture-catalog {
+  max-height: none;
+  overflow: visible;
+}
+
+/* What just happened (placed, refused, saved) and the save buttons stay in view while the catalog scrolls. */
+.office-editor .office-save-status {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.editor-host .office-editor-footer {
+  position: sticky;
+  z-index: 2;
+  bottom: 0;
+  padding-block: 10px;
+  border-top: 1px solid var(--color-line);
+  background: var(--color-panel);
+}
+
+/* Where the piece being placed will land: solid outline when it fits, crossed out when nothing nearby is free. */
+.office-placement-ghost {
+  position: absolute;
+  z-index: 30;
+  top: var(--world-y);
+  left: var(--world-x);
+  width: var(--world-w);
+  height: var(--world-h);
+  border: 2px solid var(--color-green);
+  background: color-mix(in srgb, var(--color-green) 38%, transparent);
+  pointer-events: none;
+}
+
+.office-placement-ghost[data-valid="false"] {
+  border: 2px dashed var(--color-red);
+  background:
+    linear-gradient(to top right, transparent 46%, var(--color-red) 46% 54%, transparent 54%),
+    color-mix(in srgb, var(--color-red) 26%, transparent);
+}
+
+.office-world-stage.placing {
+  cursor: crosshair;
+}
+
+/*
+ * A member's Discord profile picture, worn as the character's face. It covers the face only (in the 48×96
+ * frame the face sits about 30 to 56 pixels down), so the hair and hat chosen with /karakter stay visible.
+ * The picture is small and drawn pixelated so it sits with the pixel art.
+ */
+.world-agent-face {
+  position: absolute;
+  z-index: 3;
+  top: 29px;
+  left: 11px;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--color-ink);
+  border-radius: 50%;
+  background: var(--color-cream);
+  image-rendering: pixelated;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+/* Seen from behind there is no face to cover; in profile the face is off-center. */
+.world-agent[data-direction="up"] .world-agent-face {
+  display: none;
+}
+
+.world-agent[data-direction="right"] .world-agent-face {
+  left: 15px;
+}
+
+.world-agent[data-direction="left"] .world-agent-face {
+  left: 7px;
+}
+
+/* The typing frames draw the character four sprite pixels lower. */
+.world-agent[data-working="true"] .world-agent-face {
+  top: 41px;
+}
+
+.world-agent[data-presence="idle"] .world-agent-face {
+  filter: saturate(0.4);
+}
+
+.world-agent[data-presence="offline"] .world-agent-face {
+  filter: grayscale(1) opacity(0.6);
+}
+
+.settings-dialog code {
+  padding: 1px 5px;
+  border: 1px solid var(--color-line);
+  border-radius: 5px;
+  background: var(--color-panel);
+  font-size: 12px;
+}
+
+/* The kit's catalog sheet: every part, seen from the front, the back, and the side. */
+.guide-catalog {
+  display: block;
+  width: 100%;
+  max-width: 604px;
+  height: auto;
+  margin-top: 8px;
+  border: 1px solid var(--color-edge);
+  border-radius: 8px;
+  image-rendering: pixelated;
+}
+
 .office-zone[data-bound="false"] {
   filter: saturate(0.35);
 }
@@ -601,6 +772,20 @@
   .workspace-layout[data-pane="feed"] .roster-panel,
   .workspace-layout[data-pane="roster"] .feed-panel {
     display: none;
+  }
+
+  /* While editing, the floor and the editor are both needed: stack them instead of switching tabs. */
+  .moonlab-shell .workspace-layout[data-editing="true"] {
+    grid-template-rows: minmax(0, 1fr) minmax(0, 46%);
+  }
+
+  .moonlab-shell .workspace-layout[data-editing="true"] > .office-panel {
+    display: flex;
+  }
+
+  .moonlab-shell .workspace-layout[data-editing="true"] > .work-dock {
+    display: grid;
+    border-top: 1px solid var(--color-line);
   }
 
   .work-dock {

@@ -42,6 +42,11 @@ export class World {
     this.relevant = new Set();
   }
 
+  /** Something outside this file changed what the snapshot shows (a chosen character, a new profile picture). */
+  touch() {
+    this.onChange();
+  }
+
   setStatus(status, errorCode = "") {
     this.status = status;
     this.errorCode = errorCode;
@@ -185,7 +190,7 @@ export class World {
    * the text channel they last wrote in, the AFK room when idle or offline, then the first room bound to a server
    * of theirs. Offline members are shown only in the AFK room; without one they are not shown at all.
    */
-  snapshot(slots, publicId, now = Date.now()) {
+  snapshot(slots, publicId, lookOf = () => ({}), now = Date.now()) {
     const voiceRoom = new Map();
     const textRoom = new Map();
     const guildRoom = new Map();
@@ -244,6 +249,7 @@ export class World {
         room,
         voice: voiceName,
         chat: chatName,
+        ...lookOf(userId),
         rank: voiceName ? 0 : chatName ? 1 : STATUS_RANK[user.status] ?? 5,
       });
     }

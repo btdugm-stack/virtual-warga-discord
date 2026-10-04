@@ -35,6 +35,17 @@ export type Member = {
   readonly voice: string | null;
   /** Text channel name, for a minute after their last message. The message itself is never sent. */
   readonly chat: string | null;
+  /**
+   * The code of the member's character: assembled with `/karakter`, else derived from the member. Its sprite
+   * sheet is at `/api/character/<look>.png`. Absent when the server is older than the page (the two are
+   * restarted separately); the page then falls back to the six ready-made sprites.
+   */
+  readonly look?: string;
+  /**
+   * Set when the member wears their Discord profile picture as a face. Not an address: a tag that changes
+   * with the picture. The image is at `/api/avatar/<id>`.
+   */
+  readonly avatar?: string | null;
 };
 
 export type FeedKind = "online" | "idle" | "dnd" | "offline" | "voice_join" | "voice_move" | "voice_leave" | "chat";
@@ -57,6 +68,8 @@ export type Snapshot = {
   readonly rooms: readonly RoomState[];
   readonly members: readonly Member[];
   readonly feed: readonly FeedEntry[];
+  /** Changes whenever an admin saves the furniture layout. */
+  readonly layoutRev: number;
 };
 
 export type Slot =

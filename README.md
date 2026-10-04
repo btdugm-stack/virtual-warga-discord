@@ -57,6 +57,37 @@ one exists; in a server above 2,000 members the offline list is not loaded. Unti
 server per room. A room has 12 to 22 seats depending on its furniture; anyone beyond that is counted as
 "+N" on the room label.
 
+## Characters
+
+Each member's character is assembled from the character kit in `server/character-kit/`: 6 skin tones, 10
+eyes, 25 hair styles in 12 colors, 25 tops, 15 bottoms, 8 shoes, 12 hats, and 15 accessories (up to three
+at once). Without a choice the character is derived from the member and stays the same across restarts.
+A member can also wear their Discord profile picture as the face. That is off until they turn it on; it
+covers the face only, so hair and hat stay visible.
+
+A member changes their own with the `/karakter` command in Discord. It opens a picker only they can see:
+
+- a picture of the character from the front, the back, and the side;
+- a menu choosing which part to change, and a menu with that part's options;
+- buttons: **Pakai** applies, **Acak** draws a random character, **Bawaan** brings back the automatic one,
+  **Foto profil** wears or drops the profile picture, **Batal** closes the picker.
+
+Nothing changes in the office until **Pakai** is pressed. The **Karakter** button on the site explains the
+command and shows the kit's catalog. The command is registered in every server the bot is in when the server
+process starts; it does not answer while the process is down.
+
+How it is put together:
+
+- Every kit part is a full sprite sheet in the layout the office animates (112×96, seven 16×32 frames in
+  three rows). `server/character-kit.mjs` stacks the parts in the order `character-kit/manifest.json` gives
+  and serves the result at `/api/character/<code>.png`. Adding a part means adding its sheet and its
+  manifest entry; nothing else names the parts.
+- Choices are saved in `server/data/characters.json`, keyed by Discord user id and naming each part by id.
+- Profile pictures are fetched by the server and passed on under the member's public id, so the picture's
+  real address (which contains the Discord id) never reaches a browser.
+- The kit came with its own README, catalog, and ready-made examples in `scripts/warga-character-kit/`.
+  That README says the art is original, not derived from MetroCity or Pixel Agents.
+
 ## Publish it
 
 `npm run build`, then `npm start` on the host. That one process holds the bot connection, serves the API,
@@ -65,10 +96,11 @@ and serves the built site from `dist/`, so there is nothing else to deploy.
 - It needs a host that keeps a Node process running (a VPS, Railway, Fly.io, Render). Static hosting,
   serverless functions, and PHP shared hosting will not work: the bot needs a permanent connection.
 - Set `DISCORD_TOKEN`, `ADMIN_PASSWORD`, and `PORT` as environment variables on the host, and serve it over HTTPS.
-- Room bindings are saved in `server/data/rooms.json`. Keep that directory on persistent storage.
+- Room bindings, the furniture layout, and character choices are saved in `server/data/`. Keep that directory on persistent storage.
 - If a reverse proxy sits in front, it must not buffer `/api/events` (the live stream).
-- Everyone who opens the site sees the display names and activity of members in the shown servers.
-  Tell those servers' members before making it public. Discord user ids and avatars are not sent to browsers.
+- Everyone who opens the site sees the display names and activity of members in the shown servers. Tell
+  those servers' members before making it public. A profile picture is shown only for a member who turned
+  it on in the `/karakter` picker. Discord user ids are not sent to browsers.
 
 ## What's inside
 
@@ -77,20 +109,25 @@ and serves the built site from `dist/`, so there is nothing else to deploy.
 | `server/index.mjs` | HTTP server: public snapshot and live stream, admin login and room bindings, static files |
 | `server/world.mjs` | The live picture of Discord and the rules for who sits in which room |
 | `server/discord-source.mjs`, `server/demo-source.mjs` | The gateway connection, and the invented data used without a token |
-| `server/config-store.mjs` | Validation and storage of the room bindings |
+| `server/config-store.mjs`, `server/layout-store.mjs`, `server/character-store.mjs` | Validation and storage of the room bindings, the furniture layout, and members' character choices |
+| `server/character-kit/`, `server/character-kit.mjs` | The layered character art, and the code that stacks it into sprite sheets and previews |
+| `server/karakter-command.mjs` | The `/karakter` command and its picker |
 | `src/discord/` | Snapshot types, the stream hook, and the Discord-related copy |
-| `src/App.tsx`, `src/SettingsPanel.tsx`, `src/app.css` | The shell: room strip, activity feed, roster, and the settings dialog |
+| `src/App.tsx`, `src/SettingsPanel.tsx`, `src/CharacterGuide.tsx`, `src/app.css` | The shell: room strip, activity feed, roster, the settings dialog, and the character guide |
 | `src/game/office-world.ts` | The 72×30 world: rooms, walls, doors, seats, furniture, protected walkways |
 | `src/OfficeWorld.tsx` | The renderer: seating, walking, arrivals and departures, and the furniture editor |
 | `src/company.config.ts` | The site name, 19 theme color tokens, and the five work rooms' default names |
-| `public/characters`, `public/office-assets` | Pixel sprites and furniture art (third-party, see [THIRD-PARTY.md](THIRD-PARTY.md)) |
+| `public/characters`, `public/office-assets` | The kit's catalog picture, six fallback sprites, and furniture art (the last two third-party, see [THIRD-PARTY.md](THIRD-PARTY.md)) |
 | `design/`, `guide/` | Design notes and build notes from the original pack; they predate the Discord integration |
 
 ## Limits
 
-- Six character sprites, tinted six ways. Discord avatars are not used.
+- The kit's parts are named by their English ids in the picker ("Batik shirt", "Flat top").
+- A profile picture is shown at 32 pixels, over the character's face, and not at all from behind.
+- The six older sprites in `public/characters` are only drawn when the server is older than the page.
 - The new Discord copy is in Indonesian and English. Korean, Chinese, and Vietnamese show English for it.
-- Furniture changes made in **Customize my office** are not saved.
+- The furniture layout is one shared layout. Anyone can try the editor, but only a signed-in admin can save;
+  a saved layout is stored in `server/data/layout.json` and shown to every visitor.
 - One admin password, no per-user accounts.
 
 ## Rights

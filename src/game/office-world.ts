@@ -734,6 +734,35 @@ function canPlaceFurnitureAgainst(
   return true;
 }
 
+/** How far a dropped piece may slide to find room. */
+const PLACEMENT_REACH = 4;
+/** Offsets within reach, nearest first. */
+const NEARBY_OFFSETS: readonly (readonly [number, number])[] = (() => {
+  const offsets: [number, number][] = [];
+  for (let dr = -PLACEMENT_REACH; dr <= PLACEMENT_REACH; dr += 1) {
+    for (let dc = -PLACEMENT_REACH; dc <= PLACEMENT_REACH; dc += 1) offsets.push([dc, dr]);
+  }
+  return offsets.sort((a, b) => (a[0] ** 2 + a[1] ** 2) - (b[0] ** 2 + b[1] ** 2));
+})();
+
+/**
+ * Where a piece dropped at `value` actually goes: that spot when it is free, else the closest free spot a few
+ * tiles around it. A table several tiles wide rarely fits exactly under the pointer, and refusing every
+ * near miss makes the editor feel broken. Null when nothing nearby is free.
+ */
+export function nearestFurniturePlacement(
+  layout: OfficeLayout,
+  value: OfficeFurniture,
+  standing: ReadonlySet<string> = NO_TILES,
+  ignoreUid?: string,
+): OfficeFurniture | null {
+  for (const [dc, dr] of NEARBY_OFFSETS) {
+    const candidate = { ...value, col: value.col + dc, row: value.row + dr };
+    if (canPlaceFurniture(layout, candidate, ignoreUid, standing)) return candidate;
+  }
+  return null;
+}
+
 function firstAvailableFurniturePosition(
   layout: OfficeLayout,
   value: OfficeFurniture,

@@ -3,8 +3,11 @@
  *
  * Privileged intents needed in the Developer Portal: Presence and Server Members.
  * Message Content is deliberately not requested: the office only shows that someone wrote, never what.
+ *
+ * It also registers the `/karakter` command and passes its interactions to `karakter-command.mjs`.
  */
-import { ChannelType, Client, Events, GatewayIntentBits } from "discord.js";
+import { ChannelType, Client, Events, GatewayIntentBits, MessageFlags } from "discord.js";
+import { KARAKTER_COMMAND, handleKarakter } from "./karakter-command.mjs";
 
 const CHANNEL_KINDS = new Map([
   [ChannelType.GuildText, "text"],
@@ -20,10 +23,13 @@ const CHANNEL_KINDS = new Map([
  */
 const MEMBER_LIST_MAX = 2000;
 
+/** Sent to browsers as-is: small, and drawn pixelated to sit with the pixel art. */
+const AVATAR_SIZE = 32;
+
 /** Gateway close code 4014, as discord.js reports it. */
 const DISALLOWED_INTENTS = /disallowed intents/i;
 
-export function startDiscord(world, token) {
+export function startDiscord(world, token, characters) {
   const client = new Client({
     intents: [
       GatewayIntentBits.Guilds,
@@ -62,6 +68,8 @@ export function startDiscord(world, token) {
   };
 
   const syncGuild = (guild) => {
+    guild.commands.set([KARAKTER_COMMAND])
+      .catch((error) => console.error(`[discord] gagal mendaftarkan /karakter di ${guild.name}: ${error.message}`));
     world.setGuild(guild.id, guild.name);
     guild.channels.cache.forEach(syncChannel);
     guild.presences.cache.forEach((presence) => {
@@ -123,6 +131,17 @@ export function startDiscord(world, token) {
     world.noteChat(message.guild.id, message.author.id, channelId, message.member?.displayName ?? message.author.username);
   });
 
+  client.on(Events.UserUpdate, () => world.touch());
+
+  client.on(Events.InteractionCreate, (interaction) => {
+    handleKarakter(interaction, characters, () => world.touch()).catch((error) => {
+      console.error(`[discord] /karakter gagal: ${error.message}`);
+      // Discord shows "interaction failed" unless something is sent back; say so in words instead.
+      if (!interaction.isRepliable() || interaction.replied || interaction.deferred) return;
+      interaction.reply({ content: "Maaf, ada gangguan. Coba jalankan `/karakter` lagi.", flags: MessageFlags.Ephemeral }).catch(() => {});
+    });
+  });
+
   client.on(Events.ShardDisconnect, () => world.setStatus("connecting"));
   client.on(Events.ShardReconnecting, () => world.setStatus("connecting"));
   client.on(Events.ShardResume, () => world.setStatus("ready"));
@@ -140,5 +159,8 @@ export function startDiscord(world, token) {
     world.setStatus("error", code);
   });
 
-  return client;
+  return {
+    /** The member's own profile picture, or null when they never set one (the default Discord logo is not a face). */
+    avatarUrl: (userId) => client.users.cache.get(userId)?.avatarURL({ extension: "png", size: AVATAR_SIZE, forceStatic: true }) ?? null,
+  };
 }

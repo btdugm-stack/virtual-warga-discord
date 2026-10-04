@@ -83,6 +83,26 @@ export const COPY = {
   activityNone: both("Nongkrong", "Hanging out"),
   voiceBadge: both("VC · {where}", "VC · {where}"),
 
+  guideOpen: both("Karakter", "Characters"),
+  guideTitle: both("Rakit karaktermu", "Build your character"),
+  guideClose: both("Tutup panduan karakter", "Close the character guide"),
+  guideIntro: both(
+    "Ketik /karakter di server Discord yang ada bot ini. Bot menampilkan pratinjau yang hanya kamu lihat, dari depan, belakang, dan samping. Sebelum tombol Pakai ditekan, tidak ada yang berubah di kantor, dan hanya kamu yang bisa mengubah karaktermu.",
+    "Type /karakter in a Discord server that has this bot. The bot shows a preview only you can see, from the front, the back, and the side. Nothing changes in the office until you press Pakai, and only you can change your character.",
+  ),
+  guideParts: both(
+    "Menu pertama memilih bagian yang diubah: kulit, mata, gaya rambut, warna rambut, atasan, bawahan, sepatu, topi, atau aksesori (sampai tiga). Menu kedua memilih isinya. Acak membuat karakter baru secara acak, Bawaan mengembalikan karakter otomatismu.",
+    "The first menu chooses the part to change: skin, eyes, hair style, hair color, top, bottom, shoes, hat, or accessories (up to three). The second menu chooses what goes there. Acak makes a new character at random, Bawaan brings back your automatic one.",
+  ),
+  guidePhoto: both(
+    "Foto profil Discord-mu tidak ditampilkan, kecuali kamu menyalakannya lewat tombol Foto profil. Foto itu lalu dipakai sebagai wajah karakter dan hanya menutupi wajah, jadi rambut dan topi tetap terlihat.",
+    "Your Discord profile picture is not shown unless you turn it on with the Foto profil button. It is then worn as the character's face and covers the face only, so hair and hat stay visible.",
+  ),
+  guideCatalogAlt: both(
+    "Katalog semua bagian karakter: 6 warna kulit, 10 mata, 25 gaya rambut, 12 warna rambut, 25 atasan, 15 bawahan, 8 sepatu, 12 topi, dan 15 aksesori, masing-masing dilihat dari depan, belakang, dan samping.",
+    "Catalog of every character part: 6 skin tones, 10 eyes, 25 hair styles, 12 hair colors, 25 tops, 15 bottoms, 8 shoes, 12 hats, and 15 accessories, each seen from the front, the back, and the side.",
+  ),
+
   settingsOpen: both("Pengaturan ruangan", "Room settings"),
   settingsTitle: both("Pengaturan ruangan", "Room settings"),
   settingsClose: both("Tutup pengaturan", "Close settings"),

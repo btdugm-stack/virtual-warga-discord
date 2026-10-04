@@ -1,6 +1,7 @@
 /**
  * The one process behind the office: holds the bot connection, pushes the public snapshot to browsers over
- * Server-Sent Events, serves the admin API for room bindings, and serves the built site from `dist/`.
+ * Server-Sent Events, serves the admin API for room bindings and the furniture layout, passes members'
+ * profile pictures through without revealing their Discord ids, and serves the built site from `dist/`.
  *
  * The bot token and the admin password live only here (environment variables). The browser never sees either.
  */
@@ -9,8 +10,11 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { codeOf, sheetPng } from "./character-kit.mjs";
+import { CharacterStore } from "./character-store.mjs";
 import { ConfigStore, checkedSlots } from "./config-store.mjs";
 import { startDemo } from "./demo-source.mjs";
+import { LayoutStore, checkedLayout } from "./layout-store.mjs";
 import { World } from "./world.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -21,6 +25,8 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "";
 const CONFIG_FILE = process.env.CONFIG_FILE || path.join(ROOT, "server", "data", "rooms.json");
 
 const BODY_MAX = 16 * 1024;
+/** A full layout is 240 pieces of furniture, more than the default body limit allows. */
+const LAYOUT_BODY_MAX = 64 * 1024;
 const STREAM_MAX = 500;
 const SESSION_MS = 12 * 60 * 60 * 1000;
 const LOGIN_WINDOW_MS = 10 * 60 * 1000;
@@ -47,11 +53,13 @@ const MIME = {
  */
 const idKey = crypto.randomBytes(32);
 const publicIds = new Map();
+const userIds = new Map();
 function publicId(userId) {
   let id = publicIds.get(userId);
   if (!id) {
     id = crypto.createHmac("sha256", idKey).update(userId).digest("base64url").slice(0, 16);
     publicIds.set(userId, id);
+    userIds.set(id, userId);
   }
   return id;
 }
@@ -64,11 +72,57 @@ const world = new World(() => {
   pushTimer ??= setTimeout(push, PUSH_DELAY_MS);
 });
 const config = new ConfigStore(CONFIG_FILE);
+const layouts = new LayoutStore(path.join(path.dirname(CONFIG_FILE), "layout.json"));
+const characters = new CharacterStore(path.join(path.dirname(CONFIG_FILE), "characters.json"));
+/** Set once the Discord connection starts. Demo members have no profile pictures. */
+let avatarUrl = () => null;
+
+/** The profile picture this member wears, or null: they have none, or have not turned it on in the `/karakter` picker. */
+function wornAvatar(userId) {
+  return characters.look(userId).photo ? avatarUrl(userId) : null;
+}
+
+/**
+ * How a member looks, as sent to browsers. `look` is the code of their character; its sprite sheet is at
+ * `/api/character/<look>.png`. `avatar` is not the picture's address (that contains the Discord id) but a
+ * short tag that changes with the picture; the browser asks `/api/avatar/<public id>` for the image itself.
+ */
+function lookOf(userId) {
+  const url = wornAvatar(userId);
+  return {
+    look: codeOf(characters.look(userId).spec),
+    avatar: url ? crypto.createHash("sha256").update(url).digest("base64url").slice(0, 8) : null,
+  };
+}
+
+const AVATAR_CACHE_MAX = 500;
+const AVATAR_BYTES_MAX = 256 * 1024;
+/** Fetched pictures by address, oldest first. A changed picture has a new address, so entries never go stale. */
+const avatarCache = new Map();
+
+function avatarImage(url) {
+  let image = avatarCache.get(url);
+  if (!image) {
+    image = (async () => {
+      // The address comes from discord.js, but only Discord's CDN is ever fetched from here.
+      if (new URL(url).hostname !== "cdn.discordapp.com") throw new Error("Unexpected avatar host");
+      const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      if (!response.ok) throw new Error(`Avatar fetch failed: ${response.status}`);
+      const bytes = Buffer.from(await response.arrayBuffer());
+      if (bytes.length > AVATAR_BYTES_MAX) throw new Error("Avatar too large");
+      return bytes;
+    })();
+    avatarCache.set(url, image);
+    image.catch(() => avatarCache.delete(url));
+    if (avatarCache.size > AVATAR_CACHE_MAX) avatarCache.delete(avatarCache.keys().next().value);
+  }
+  return image;
+}
 
 function payload() {
   const slots = config.slots(world);
   world.setRelevant(slots);
-  return JSON.stringify(world.snapshot(slots, publicId));
+  return JSON.stringify({ ...world.snapshot(slots, publicId, lookOf), layoutRev: layouts.rev });
 }
 
 function push() {
@@ -128,7 +182,7 @@ function sendJson(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-function readJson(req) {
+function readJson(req, max = BODY_MAX) {
   return new Promise((resolve, reject) => {
     // Requiring JSON keeps a plain cross-site form from reaching the admin routes.
     if (!/^application\/json\b/i.test(req.headers["content-type"] ?? "")) {
@@ -139,7 +193,7 @@ function readJson(req) {
     const chunks = [];
     req.on("data", (chunk) => {
       size += chunk.length;
-      if (size > BODY_MAX) {
+      if (size > max) {
         reject(new Error("Body too large"));
         req.destroy();
         return;
@@ -183,6 +237,57 @@ async function handleApi(req, res, route) {
     res.write(`retry: 3000\nevent: snapshot\ndata: ${payload()}\n\n`);
     streams.add(res);
     req.on("close", () => streams.delete(res));
+    return;
+  }
+
+  const lookCode = /^\/api\/character\/([0-9a-z]{1,32})\.png$/.exec(route)?.[1];
+  if (lookCode && req.method === "GET") {
+    const sheet = sheetPng(lookCode);
+    if (!sheet) {
+      sendJson(res, 404, { error: "not_found" });
+      return;
+    }
+    // A code always spells the same character, so its sheet never changes.
+    res.writeHead(200, { "Content-Type": "image/png", "Cache-Control": "public, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff" });
+    res.end(sheet);
+    return;
+  }
+
+  const avatarOf = /^\/api\/avatar\/([A-Za-z0-9_-]{16})$/.exec(route)?.[1];
+  if (avatarOf && req.method === "GET") {
+    const userId = userIds.get(avatarOf);
+    const url = userId ? wornAvatar(userId) : null;
+    if (!url) {
+      sendJson(res, 404, { error: "not_found" });
+      return;
+    }
+    let image;
+    try {
+      image = await avatarImage(url);
+    } catch {
+      sendJson(res, 502, { error: "avatar_unavailable" });
+      return;
+    }
+    // The browser's request carries the picture's tag, so a new picture is a new address and this can be cached.
+    res.writeHead(200, { "Content-Type": "image/png", "Cache-Control": "public, max-age=86400", "X-Content-Type-Options": "nosniff" });
+    res.end(image);
+    return;
+  }
+
+  if (route === "/api/layout" && req.method === "GET") {
+    sendJson(res, 200, { layout: layouts.layout });
+    return;
+  }
+
+  if (route === "/api/admin/layout" && req.method === "PUT") {
+    if (!isAdmin(req)) {
+      sendJson(res, 401, { error: "unauthorized" });
+      return;
+    }
+    const body = await readJson(req, LAYOUT_BODY_MAX);
+    layouts.save(checkedLayout(body?.layout));
+    push();
+    sendJson(res, 200, { ok: true });
     return;
   }
 
@@ -278,7 +383,7 @@ const server = http.createServer((req, res) => {
 
 if (TOKEN) {
   const { startDiscord } = await import("./discord-source.mjs");
-  startDiscord(world, TOKEN);
+  ({ avatarUrl } = startDiscord(world, TOKEN, characters));
 } else {
   console.warn("[server] DISCORD_TOKEN belum diisi — berjalan dalam mode demo dengan data karangan.");
   startDemo(world);

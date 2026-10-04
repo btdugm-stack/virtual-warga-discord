@@ -1,12 +1,13 @@
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { CharacterGuide } from "./CharacterGuide";
 import { COMPANY, THEME } from "./company.config";
 import { COPY, FEED_LABELS, PRESENCE_LABELS, fill } from "./discord/copy";
 import { activityText, roomNote, roomTitle } from "./discord/rooms";
 import type { Member, RoomState, Snapshot } from "./discord/types";
 import { useDiscord, type LinkState } from "./discord/useDiscord";
 import { ROOM_ZONES } from "./game/office-world";
-import { LOCALES, LOCALE_LABELS, checkedLocale, localized, type Locale, type LocalizedText } from "./i18n";
+import { DEFAULT_LOCALE, LOCALES, LOCALE_LABELS, checkedLocale, localized, type Locale, type LocalizedText } from "./i18n";
 import { OfficeWorld } from "./OfficeWorld";
 import { SettingsPanel } from "./SettingsPanel";
 
@@ -32,7 +33,11 @@ const themeStyle = {
   "--color-shadow": THEME.shadow,
 } as CSSProperties;
 
-const LOCALE_STORAGE_KEY = "warga.locale";
+/*
+ * Holds a language only when the visitor picked one. The earlier key (`warga.locale`) was written on every
+ * visit from the browser's language, so it cannot tell a choice from a guess and is no longer read.
+ */
+const LOCALE_STORAGE_KEY = "warga.language";
 /** BCP 47 tags for date formatting. The UI locale codes are not all valid on their own (`zh` is ambiguous). */
 const DATE_LOCALES: Record<Locale, string> = { ko: "ko-KR", en: "en-GB", zh: "zh-CN", vi: "vi-VN", id: "id-ID" };
 
@@ -47,14 +52,22 @@ const PANES = [
 const NO_ROOMS: readonly RoomState[] = [];
 const NO_MEMBERS: readonly Member[] = [];
 
+/** The visitor's own pick if they made one, else the site's default language whatever the browser is set to. */
 function initialLocale(): Locale {
-  let stored: string | null = null;
   try {
-    stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
+    return checkedLocale(window.localStorage.getItem(LOCALE_STORAGE_KEY));
   } catch {
-    // Storage can be blocked; the browser language still gives a sensible start.
+    // Storage can be blocked; the default language still applies.
+    return DEFAULT_LOCALE;
   }
-  return checkedLocale(stored ?? navigator.language.slice(0, 2).toLowerCase());
+}
+
+function rememberLocale(locale: Locale) {
+  try {
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+  } catch {
+    // The language still applies for this visit.
+  }
 }
 
 /** Wall-clock time, refreshed often enough that the minute never lags visibly. */
@@ -86,16 +99,15 @@ export function App() {
   const [pane, setPane] = useState<Pane>("office");
   const [activeRoom, setActiveRoom] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  // The furniture editor takes over the side dock while it is open, so it never covers the floor it edits.
+  const [editorHost, setEditorHost] = useState<HTMLDivElement | null>(null);
+  const [editing, setEditing] = useState(false);
   const now = useNow();
 
   useEffect(() => {
     document.documentElement.lang = locale;
     document.title = localized(COMPANY.pageTitle, locale);
-    try {
-      window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
-    } catch {
-      // The language still applies for this visit.
-    }
   }, [locale]);
 
   const rooms = snapshot?.rooms ?? NO_ROOMS;
@@ -119,12 +131,22 @@ export function App() {
         <span className="app-storage" data-link={link} role="status">{localized(linkText, locale)}</span>
         <label className="app-language">
           <span>{localized(COPY.language, locale)}</span>
-          <select onChange={(event) => setLocale(checkedLocale(event.target.value))} value={locale}>
+          <select
+            onChange={(event) => {
+              const picked = checkedLocale(event.target.value);
+              setLocale(picked);
+              rememberLocale(picked);
+            }}
+            value={locale}
+          >
             {LOCALES.map((code) => (
               <option key={code} value={code}>{LOCALE_LABELS[code]}</option>
             ))}
           </select>
         </label>
+        <button className="work-action app-settings" onClick={() => setGuideOpen(true)} type="button">
+          {localized(COPY.guideOpen, locale)}
+        </button>
         <button className="work-action app-settings" onClick={() => setSettingsOpen(true)} type="button">
           {localized(COPY.settingsOpen, locale)}
         </button>
@@ -165,19 +187,23 @@ export function App() {
         ))}
       </div>
 
-      <div className="workspace-layout" data-pane={pane}>
+      <div className="workspace-layout" data-editing={editing ? "true" : "false"} data-pane={pane}>
         <section className="office-panel">
           <OfficeWorld
             activeRoom={activeRoom}
+            editorHost={editorHost}
+            layoutRev={snapshot?.layoutRev ?? 0}
             clock={{ label: localized(COPY.clock, locale), time: clockTime }}
             locale={locale}
             members={members}
+            onEditorOpenChange={setEditing}
             ready={true}
             rooms={rooms}
           />
         </section>
 
-        <aside className="work-dock">
+        <aside className="work-dock" data-editing={editing ? "true" : "false"}>
+          <div className="editor-host" ref={setEditorHost} />
           <section className="feed-panel" aria-labelledby="feed-title">
             <h2 id="feed-title">{localized(COPY.feedTitle, locale)}</h2>
             {feed.length === 0 ? (
@@ -232,6 +258,7 @@ export function App() {
       </div>
 
       {settingsOpen ? <SettingsPanel locale={locale} onClose={() => setSettingsOpen(false)} /> : null}
+      {guideOpen ? <CharacterGuide locale={locale} onClose={() => setGuideOpen(false)} /> : null}
     </div>
   );
 }

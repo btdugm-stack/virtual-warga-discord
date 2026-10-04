@@ -2,6 +2,9 @@
 
 import type { CSSProperties, DragEvent, KeyboardEvent, MouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { adminToken, storeAdminToken } from "./discord/admin";
+import { AGENT_HUES, SPRITE_COUNT } from "./discord/characters";
 import { COPY, PRESENCE_LABELS, fill } from "./discord/copy";
 import { activityText, roomNote, roomTitle } from "./discord/rooms";
 import type { Member, RoomState } from "./discord/types";
@@ -21,6 +24,7 @@ import {
   findOfficePath,
   firstAvailableFurnitureCenter,
   furnitureFootprint,
+  nearestFurniturePlacement,
   roomSeats,
   spawnPointFor,
   type FurnitureRotation,
@@ -39,14 +43,19 @@ export type OfficeWorldProps = {
   members: readonly Member[];
   /** The room the close-up camera centers on, or null for the middle of the floor. */
   activeRoom: number | null;
+  /** Changes when an admin saves the shared furniture layout; the office then loads it again. */
+  layoutRev: number;
   ready: boolean;
   locale: Locale;
   clock: { label: string; time: string };
+  /** Where the furniture editor is drawn. The shell passes its side dock so the editor never covers the floor. */
+  editorHost?: HTMLElement | null;
+  onEditorOpenChange?: (open: boolean) => void;
 };
 
 type WorldStyle = CSSProperties & Record<`--${string}`, string | number>;
 type Direction = "left" | "right" | "up" | "down";
-/** A member plus the look derived from their id, so the same person keeps the same character. */
+/** A member with their color variant resolved to degrees, plus the small per-person offsets used when walking. */
 type Actor = Member & { sprite: number; hue: number; jitter: number; door: number };
 type AgentMotion = {
   /** The tile currently being approached. The reference point for arrival checks and path progress. */
@@ -81,9 +90,6 @@ const HUES = [
   { value: 210, label: "hue.blue" },
   { value: 300, label: "hue.pink" },
 ] as const satisfies readonly { value: number; label: MessageKey }[];
-const SPRITE_COUNT = 6;
-/** Subtle hue variations make the six sprites look like different people. Larger shifts distort skin tones. */
-const AGENT_HUES = [0, -34, 18, -16, 34, -50] as const;
 
 function seatAsset(direction: Direction) {
   const view = direction === "up" ? "BACK" : direction === "down" ? "FRONT" : "SIDE";
@@ -137,6 +143,9 @@ const CROWDED_FROM = 16;
 const STROLL_SHARE = 0.25;
 const STROLL_MAX = 6;
 
+/** Drag payload prefix for a piece taken from the catalog; a placed piece's uid can never contain a colon. */
+const NEW_PIECE = "new:";
+
 const clamp = (value: number, limit: number) => Math.min(limit, Math.max(-limit, value));
 
 /**
@@ -148,7 +157,7 @@ function newFurnitureUid() {
     ?? `office-${Date.now().toString(36)}-${Math.floor(Math.random() * 0xffffff).toString(36)}`;
 }
 
-/** FNV-1a. Only used to spread people across sprites, hues, and doors. */
+/** FNV-1a. Spreads people across the two doors, and across the characters when the server names none. */
 function hashOf(text: string) {
   let hash = 0x811c9dc5;
   for (let index = 0; index < text.length; index += 1) {
@@ -162,6 +171,8 @@ function actorFor(member: Member): Actor {
   const hash = hashOf(member.id);
   return {
     ...member,
+    // Only used when the server is older than this page and names no character: one of the ready-made sprites,
+    // tinted, so nobody is drawn without a body.
     sprite: hash % SPRITE_COUNT,
     hue: AGENT_HUES[(hash >>> 4) % AGENT_HUES.length],
     // A subtle tile-unit offset that keeps people passing through the same tile from overlapping exactly.
@@ -241,9 +252,12 @@ export function OfficeWorld({
   rooms,
   members,
   activeRoom,
+  layoutRev,
   ready,
   locale,
   clock,
+  editorHost,
+  onEditorOpenChange,
 }: OfficeWorldProps) {
   const [history, setHistory] = useState<LayoutHistory>({
     past: [],
@@ -269,6 +283,9 @@ export function OfficeWorld({
   const camTarget = useRef({ x: 0.5, y: 0.5, scale: 1 });
   const [editorOpen, setEditorOpen] = useState(false);
   const [placingType, setPlacingType] = useState<OfficeFurnitureType | null>(null);
+  // Where the piece being placed would land under the pointer, and whether there is room for it.
+  const [ghost, setGhost] = useState<{ item: OfficeFurniture; valid: boolean } | null>(null);
+  const ghostTile = useRef<OfficePoint | null>(null);
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [cameraView, setCameraView] = useState<CameraView>("full");
@@ -282,13 +299,16 @@ export function OfficeWorld({
   const [reducedMotion, setReducedMotion] = useState(false);
   // Store the key, not the copy, so the latest notice changes with the language.
   const [saveState, setSaveState] = useState<MessageKey>("layout.editable");
-  const [saving] = useState(false);
+  const [saving, setSaving] = useState(false);
   const editRevision = useRef(0);
+  // Edits not yet saved. A layout arriving from the server must not wipe them out.
+  const unsaved = useRef(false);
   const strollCheckAt = useRef(0);
   // Camera motion is read every frame, so the state must also be kept in a ref.
   const panOffset = useRef({ x: 0, y: 0 });
   const panStart = useRef<{ pointerId: number; x: number; y: number; panX: number; panY: number } | null>(null);
   const layout = history.present;
+  const layoutRef = useRef(layout);
   const pathLayoutKey = navigationKey(layout);
   const seats = useMemo(() => roomSeats(layout), [layout]);
   const { actors, unseated } = stage;
@@ -352,6 +372,46 @@ export function OfficeWorld({
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
   }, []);
+
+  useEffect(() => {
+    layoutRef.current = layout;
+  }, [layout]);
+
+  useEffect(() => {
+    onEditorOpenChange?.(editorOpen);
+  }, [editorOpen, onEditorOpenChange]);
+
+  // The furniture layout is shared: load what the admin saved, and again whenever a new one is saved.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/layout")
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error("unreadable"))))
+      .then((body: { layout: unknown }) => {
+        if (cancelled || unsaved.current) return;
+        if (body.layout === null) {
+          setSaveState("layout.none");
+          return;
+        }
+        let loaded: OfficeLayout;
+        try {
+          loaded = checkedOfficeLayout(body.layout);
+        } catch {
+          setSaveState("layout.invalid");
+          return;
+        }
+        // Our own save comes back through here too; keep the undo history when nothing actually changed.
+        if (JSON.stringify(loaded) === JSON.stringify(layoutRef.current)) return;
+        setHistory({ past: [], present: loaded, future: [] });
+        setSelectedUid(null);
+        setSaveState("layout.loaded");
+      })
+      .catch(() => {
+        if (!cancelled) setSaveState("layout.unreadable");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [layoutRev]);
 
   /*
    * Follow Discord: seat everyone in their room, bring newcomers in through a door, and send away whoever is gone.
@@ -637,12 +697,20 @@ export function OfficeWorld({
 
   function markChanged() {
     editRevision.current += 1;
+    unsaved.current = true;
     setSaveState("layout.unsaved");
   }
 
   function commitLayout(next: OfficeLayout) {
     if (saving) return;
-    const checked = checkedOfficeLayout(next);
+    let checked: OfficeLayout;
+    try {
+      checked = checkedOfficeLayout(next);
+    } catch {
+      // The piece fits on its own tiles but would cut a seat off from the entrance.
+      setSaveState("layout.blockedPlacement");
+      return;
+    }
     setHistory((current) => ({
       past: [...current.past.slice(-29), current.present],
       present: checked,
@@ -682,27 +750,46 @@ export function OfficeWorld({
     return keys;
   }
 
-  function placeFurniture(type: OfficeFurnitureType, point: OfficePoint) {
-    if (saving) return;
-    const catalogItem = FURNITURE_CATALOG.find((item) => item.type === type);
-    if (!catalogItem) return;
-    const furnitureType = catalogItem.type;
-    const size = furnitureFootprint(furnitureType, 0);
-    const item: OfficeFurniture = {
-      uid: newFurnitureUid(),
-      type: furnitureType,
+  /** A new piece of the given type, centered on a tile. */
+  function pieceAt(type: OfficeFurnitureType, point: OfficePoint, uid: string): OfficeFurniture {
+    const size = furnitureFootprint(type, 0);
+    return {
+      uid,
+      type,
       col: point.col - Math.floor(size.cols / 2),
       row: point.row - Math.floor(size.rows / 2),
       rotation: 0,
       hue: 0,
     };
-    if (!canPlaceFurniture(layout, item, undefined, standingTiles())) {
+  }
+
+  function placeFurniture(type: OfficeFurnitureType, point: OfficePoint) {
+    if (saving) return;
+    const item = nearestFurniturePlacement(layout, pieceAt(type, point, newFurnitureUid()), standingTiles());
+    if (!item) {
       setSaveState("layout.blockedPlacement");
       return;
     }
     commitLayout({ ...layout, furniture: [...layout.furniture, item] });
     setSelectedUid(item.uid);
     setPlacingType(null);
+    clearGhost();
+  }
+
+  function clearGhost() {
+    ghostTile.current = null;
+    setGhost(null);
+  }
+
+  /** Show where the armed piece would land. Recomputed only when the pointer enters another tile. */
+  function previewPlacement(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!placingType) return;
+    const point = eventPoint(event.currentTarget, event.clientX, event.clientY);
+    if (ghostTile.current && samePoint(ghostTile.current, point)) return;
+    ghostTile.current = point;
+    const wanted = pieceAt(placingType, point, "placement-preview");
+    const spot = nearestFurniturePlacement(layout, wanted, standingTiles());
+    setGhost(spot ? { item: spot, valid: true } : { item: wanted, valid: false });
   }
 
   function updateSelected(update: Partial<OfficeFurniture>) {
@@ -740,6 +827,7 @@ export function OfficeWorld({
   }
 
   function handleCameraPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    previewPlacement(event);
     const start = panStart.current;
     if (!start || start.pointerId !== event.pointerId) return;
     // Accumulating values that never reach the screen creates a dead segment when direction reverses.
@@ -773,17 +861,24 @@ export function OfficeWorld({
     event.preventDefault();
     if (!editorOpen || saving) return;
     const uid = event.dataTransfer.getData("text/plain");
+    const point = eventPoint(event.currentTarget, event.clientX, event.clientY);
+    // A piece dragged straight out of the catalog.
+    const fresh = FURNITURE_CATALOG.find(({ type }) => `${NEW_PIECE}${type}` === uid);
+    if (fresh) {
+      placeFurniture(fresh.type, point);
+      return;
+    }
     const item = layout.furniture.find((entry) => entry.uid === uid);
     if (!item) return;
-    const point = eventPoint(event.currentTarget, event.clientX, event.clientY);
     const size = furnitureFootprint(item.type, item.rotation);
-    const moved = {
-      ...item,
-      col: point.col - Math.floor(size.cols / 2),
-      row: point.row - Math.floor(size.rows / 2),
-    };
     setSelectedUid(uid);
-    if (!canPlaceFurniture(layout, moved, item.uid, standingTiles())) {
+    const moved = nearestFurniturePlacement(
+      layout,
+      { ...item, col: point.col - Math.floor(size.cols / 2), row: point.row - Math.floor(size.rows / 2) },
+      standingTiles(),
+      item.uid,
+    );
+    if (!moved) {
       setSaveState("layout.blockedOverlap");
       return;
     }
@@ -793,10 +888,40 @@ export function OfficeWorld({
     });
   }
 
+  /** Saving changes the office for every visitor, so the server only accepts it from a signed-in admin. */
   async function saveLayout() {
     if (saving) return;
-    // The demo has no host storage, so it always remains in web-preview state.
-    setSaveState("layout.webPreview");
+    const token = adminToken();
+    if (!token) {
+      setSaveState("layout.needAdmin");
+      return;
+    }
+    const revision = editRevision.current;
+    setSaving(true);
+    setSaveState("layout.saving");
+    let status = 0;
+    try {
+      const response = await fetch("/api/admin/layout", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ layout }),
+      });
+      status = response.status;
+    } catch {
+      // No answer at all; reported as a failed save below.
+    }
+    setSaving(false);
+    if (status === 200) {
+      // Edits made while the request was in flight are not in what was saved.
+      const stale = editRevision.current !== revision;
+      unsaved.current = stale;
+      setSaveState(stale ? "layout.savedStale" : "layout.saved");
+    } else if (status === 401) {
+      storeAdminToken(null);
+      setSaveState("layout.needAdmin");
+    } else {
+      setSaveState("layout.saveFailed");
+    }
   }
 
   const rootStyle = {
@@ -816,6 +941,140 @@ export function OfficeWorld({
     "--office-grid-x": `${100 / OFFICE_COLS}%`,
     "--office-grid-y": `${100 / OFFICE_ROWS}%`,
   } as WorldStyle;
+
+  /*
+   * The editor panel. The shell gives it a place beside the floor (`editorHost`); without one it is laid
+   * over the floor's right edge, which hides the rooms underneath.
+   */
+  const editorPanel = editorOpen ? (
+      <aside className="office-editor" id="office-editor" aria-labelledby="office-editor-title">
+        <div className="office-editor-heading">
+          <div>
+            <p>{t(locale, "editor.kicker")}</p>
+            <h3 id="office-editor-title">{t(locale, "editor.title")}</h3>
+          </div>
+          {/*
+            * Unless active furniture placement is also disabled, the stage keeps announcing "Select a location for the furniture."
+           */}
+          <button
+            type="button"
+            onClick={() => { setEditorOpen(false); setPlacingType(null); }}
+            aria-label={t(locale, "editor.close")}
+          >×</button>
+        </div>
+        {/* Directly under the heading and pinned there: at the bottom it scrolled out of view and refusals went unseen. */}
+        <p className="office-save-status" role="status" aria-live="polite">{t(locale, saveState)}</p>
+
+        <fieldset className="office-editor-section" disabled={saving}>
+          <legend>{t(locale, "editor.themeLegend")}</legend>
+          <div className="office-theme-options">
+            {(Object.keys(OFFICE_THEMES) as OfficeTheme[]).map((key) => (
+              <button
+                type="button"
+                key={key}
+                className={layout.theme === key ? "selected" : ""}
+                aria-pressed={layout.theme === key}
+                style={{ "--theme-swatch": OFFICE_THEMES[key].accent } as WorldStyle}
+                onClick={() => commitLayout({ ...layout, theme: key })}
+              >
+                {localized(OFFICE_THEMES[key].label, locale)}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset className="office-editor-section" disabled={saving}>
+          <legend>{t(locale, "editor.catalogLegend")}</legend>
+          <p>{t(locale, "editor.catalogNote")}</p>
+          <div className="office-furniture-catalog">
+            {FURNITURE_CATALOG.map((item) => (
+              <button
+                type="button"
+                key={item.type}
+                className={placingType === item.type ? "selected" : ""}
+                aria-pressed={placingType === item.type}
+                draggable={!saving}
+                onDragStart={(event) => {
+                  event.dataTransfer.setData("text/plain", `${NEW_PIECE}${item.type}`);
+                  event.dataTransfer.effectAllowed = "copy";
+                }}
+                onClick={() => {
+                  setPlacingType((current) => current === item.type ? null : item.type);
+                  setSelectedUid(null);
+                }}
+              >
+                <i aria-hidden="true" style={{ backgroundImage: `url("${item.asset}")` }} />
+                <span>{localized(item.label, locale)}</span>
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        {selected ? (
+          <fieldset className="office-editor-section" disabled={saving}>
+            <legend>{t(locale, "editor.selectedLegend")}</legend>
+            <div className="office-editor-controls" aria-label={t(locale, "editor.moveGroup")}>
+              <button type="button" onClick={() => updateSelected({ row: selected.row - 1 })} aria-label={t(locale, "editor.moveUp")}>↑</button>
+              <button type="button" onClick={() => updateSelected({ col: selected.col - 1 })} aria-label={t(locale, "editor.moveLeft")}>←</button>
+              <button type="button" onClick={() => updateSelected({ row: selected.row + 1 })} aria-label={t(locale, "editor.moveDown")}>↓</button>
+              <button type="button" onClick={() => updateSelected({ col: selected.col + 1 })} aria-label={t(locale, "editor.moveRight")}>→</button>
+              {FURNITURE_CATALOG.find(({ type }) => type === selected.type)?.rotatable ? (
+                <button
+                  type="button"
+                  onClick={() => updateSelected({ rotation: ((selected.rotation + 90) % 360) as FurnitureRotation })}
+                >
+                  {t(locale, "editor.rotate")}
+                </button>
+              ) : null}
+            </div>
+            <div className="office-hue-options" aria-label={t(locale, "editor.hueGroup")}>
+              {HUES.map(({ value, label }) => (
+                <button
+                  type="button"
+                  key={value}
+                  className={selected.hue === value ? "selected" : ""}
+                  aria-label={t(locale, label)}
+                  aria-pressed={selected.hue === value}
+                  style={{ "--furniture-hue": `${value}deg`, "--hue": `${value}deg` } as WorldStyle}
+                  onClick={() => updateSelected({ hue: value })}
+                />
+              ))}
+            </div>
+            <button
+              type="button"
+              className="office-delete-furniture"
+              onClick={() => {
+                commitLayout({ ...layout, furniture: layout.furniture.filter(({ uid }) => uid !== selected.uid) });
+                setSelectedUid(null);
+              }}
+            >
+              {t(locale, "editor.delete")}
+            </button>
+          </fieldset>
+        ) : null}
+
+        <div className="office-editor-footer">
+          <div>
+            <button type="button" disabled={!history.past.length || saving} onClick={undo}>{t(locale, "editor.undo")}</button>
+            <button type="button" disabled={!history.future.length || saving} onClick={redo}>{t(locale, "editor.redo")}</button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => {
+                commitLayout(DEFAULT_OFFICE_LAYOUT);
+                setSelectedUid(null);
+                setPlacingType(null);
+              }}
+            >
+              {t(locale, "editor.reset")}
+            </button>
+          </div>
+          <button type="button" className="office-save-layout" disabled={saving} onClick={() => void saveLayout()}>
+            {t(locale, saving ? "editor.savingShort" : "editor.save")}
+          </button>
+        </div>
+      </aside>
+    ) : null;
 
   return (
     <section
@@ -875,6 +1134,7 @@ export function OfficeWorld({
           onPointerMove={handleCameraPointerMove}
           onPointerUp={finishCameraPan}
           onPointerCancel={finishCameraPan}
+          onPointerLeave={clearGhost}
           onDragOver={(event) => { if (editorOpen) event.preventDefault(); }}
           onDrop={handleDrop}
         >
@@ -958,6 +1218,15 @@ export function OfficeWorld({
             })}
           </div>
 
+          {placingType && ghost?.item.type === placingType ? (
+            <i
+              aria-hidden="true"
+              className="office-placement-ghost"
+              data-valid={ghost.valid ? "true" : "false"}
+              style={rectStyle(ghost.item.col, ghost.item.row, furnitureFootprint(ghost.item).cols, furnitureFootprint(ghost.item).rows)}
+            />
+          ) : null}
+
           <ul className="office-agent-layer" aria-label={t(locale, "office.agentLayer", { count: actors.length })}>
             {actors.map((actor) => {
               const title = roomTitle(rooms[actor.room], actor.room, locale);
@@ -967,15 +1236,14 @@ export function OfficeWorld({
               const popoverId = `office-agent-${actor.id}`;
               return (
                 <li
-                  className={`world-agent agent-support${selectedAgent ? " agent-selected" : ""} sprite-${actor.sprite}`}
+                  className={`world-agent agent-support${selectedAgent ? " agent-selected" : ""}${actor.look ? "" : ` sprite-${actor.sprite}`}`}
                   key={actor.id}
                   ref={(el) => {
                     if (el) agentEls.current.set(actor.id, el);
                     else agentEls.current.delete(actor.id);
                   }}
-                  // With only six sprites, the same face repeats in a busy server.
-                  // Shift hues only enough to preserve skin tones, producing 6 types × 6 levels.
-                  style={{ "--agent-hue": `${actor.hue}deg` } as WorldStyle}
+                  // The tint belongs to the fallback sprites; an assembled character already has its own colors.
+                  style={{ "--agent-hue": actor.look ? "0deg" : `${actor.hue}deg` } as WorldStyle}
                   data-presence={actor.presence}
                 >
                   <b className="world-agent-bubble" data-on={actor.chat ? "true" : "false"} data-tone="talk" aria-hidden="true">
@@ -992,7 +1260,14 @@ export function OfficeWorld({
                       setSelectedAgentId((current) => current === actor.id ? null : actor.id);
                     }}
                   />
-                  <span className="world-agent-sprite" aria-hidden="true" />
+                  <span
+                    className="world-agent-sprite"
+                    aria-hidden="true"
+                    style={actor.look ? { backgroundImage: `url("/api/character/${actor.look}.png")` } : undefined}
+                  />
+                  {actor.avatar ? (
+                    <img alt="" className="world-agent-face" draggable={false} src={`/api/avatar/${actor.id}?v=${actor.avatar}`} />
+                  ) : null}
                   <span className="world-agent-identity">
                     <strong>{actor.name}</strong>
                   </span>
@@ -1070,6 +1345,7 @@ export function OfficeWorld({
             // The same guidance is already in the stage's aria-label (office.stageClose), so it is redundant for assistive technology.
             canPan ? <p className="office-drag-hint" aria-hidden="true">{t(locale, "office.dragHint")}</p> : null
           }
+          {placingType ? <p className="office-drag-hint" aria-hidden="true">{t(locale, "office.placePrompt")}</p> : null}
           {reducedMotion ? <p className="office-motion-note" role="status">{t(locale, "office.reducedMotion")}</p> : null}
         </div>
 
@@ -1089,129 +1365,7 @@ export function OfficeWorld({
           </div>
         </section>
 
-        {editorOpen ? (
-          <aside className="office-editor" id="office-editor" aria-labelledby="office-editor-title">
-            <div className="office-editor-heading">
-              <div>
-                <p>{t(locale, "editor.kicker")}</p>
-                <h3 id="office-editor-title">{t(locale, "editor.title")}</h3>
-              </div>
-              {/*
-                * Unless active furniture placement is also disabled, the stage keeps announcing "Select a location for the furniture."
-               */}
-              <button
-                type="button"
-                onClick={() => { setEditorOpen(false); setPlacingType(null); }}
-                aria-label={t(locale, "editor.close")}
-              >×</button>
-            </div>
-
-            <fieldset className="office-editor-section" disabled={saving}>
-              <legend>{t(locale, "editor.themeLegend")}</legend>
-              <div className="office-theme-options">
-                {(Object.keys(OFFICE_THEMES) as OfficeTheme[]).map((key) => (
-                  <button
-                    type="button"
-                    key={key}
-                    className={layout.theme === key ? "selected" : ""}
-                    aria-pressed={layout.theme === key}
-                    style={{ "--theme-swatch": OFFICE_THEMES[key].accent } as WorldStyle}
-                    onClick={() => commitLayout({ ...layout, theme: key })}
-                  >
-                    {localized(OFFICE_THEMES[key].label, locale)}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-
-            <fieldset className="office-editor-section" disabled={saving}>
-              <legend>{t(locale, "editor.catalogLegend")}</legend>
-              <p>{t(locale, "editor.catalogNote")}</p>
-              <div className="office-furniture-catalog">
-                {FURNITURE_CATALOG.map((item) => (
-                  <button
-                    type="button"
-                    key={item.type}
-                    className={placingType === item.type ? "selected" : ""}
-                    aria-pressed={placingType === item.type}
-                    onClick={() => {
-                      setPlacingType((current) => current === item.type ? null : item.type);
-                      setSelectedUid(null);
-                    }}
-                  >
-                    <i aria-hidden="true" style={{ backgroundImage: `url("${item.asset}")` }} />
-                    <span>{localized(item.label, locale)}</span>
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-
-            {selected ? (
-              <fieldset className="office-editor-section" disabled={saving}>
-                <legend>{t(locale, "editor.selectedLegend")}</legend>
-                <div className="office-editor-controls" aria-label={t(locale, "editor.moveGroup")}>
-                  <button type="button" onClick={() => updateSelected({ row: selected.row - 1 })} aria-label={t(locale, "editor.moveUp")}>↑</button>
-                  <button type="button" onClick={() => updateSelected({ col: selected.col - 1 })} aria-label={t(locale, "editor.moveLeft")}>←</button>
-                  <button type="button" onClick={() => updateSelected({ row: selected.row + 1 })} aria-label={t(locale, "editor.moveDown")}>↓</button>
-                  <button type="button" onClick={() => updateSelected({ col: selected.col + 1 })} aria-label={t(locale, "editor.moveRight")}>→</button>
-                  {FURNITURE_CATALOG.find(({ type }) => type === selected.type)?.rotatable ? (
-                    <button
-                      type="button"
-                      onClick={() => updateSelected({ rotation: ((selected.rotation + 90) % 360) as FurnitureRotation })}
-                    >
-                      {t(locale, "editor.rotate")}
-                    </button>
-                  ) : null}
-                </div>
-                <div className="office-hue-options" aria-label={t(locale, "editor.hueGroup")}>
-                  {HUES.map(({ value, label }) => (
-                    <button
-                      type="button"
-                      key={value}
-                      className={selected.hue === value ? "selected" : ""}
-                      aria-label={t(locale, label)}
-                      aria-pressed={selected.hue === value}
-                      style={{ "--furniture-hue": `${value}deg`, "--hue": `${value}deg` } as WorldStyle}
-                      onClick={() => updateSelected({ hue: value })}
-                    />
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className="office-delete-furniture"
-                  onClick={() => {
-                    commitLayout({ ...layout, furniture: layout.furniture.filter(({ uid }) => uid !== selected.uid) });
-                    setSelectedUid(null);
-                  }}
-                >
-                  {t(locale, "editor.delete")}
-                </button>
-              </fieldset>
-            ) : null}
-
-            <div className="office-editor-footer">
-              <div>
-                <button type="button" disabled={!history.past.length || saving} onClick={undo}>{t(locale, "editor.undo")}</button>
-                <button type="button" disabled={!history.future.length || saving} onClick={redo}>{t(locale, "editor.redo")}</button>
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => {
-                    commitLayout(DEFAULT_OFFICE_LAYOUT);
-                    setSelectedUid(null);
-                    setPlacingType(null);
-                  }}
-                >
-                  {t(locale, "editor.reset")}
-                </button>
-              </div>
-              <button type="button" className="office-save-layout" disabled={saving} onClick={() => void saveLayout()}>
-                {t(locale, saving ? "editor.savingShort" : "editor.save")}
-              </button>
-            </div>
-            <p className="office-save-status" role="status" aria-live="polite">{t(locale, saveState)}</p>
-          </aside>
-        ) : null}
+        {editorHost ? createPortal(editorPanel, editorHost) : editorPanel}
       </div>
     </section>
   );
