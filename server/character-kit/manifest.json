@@ -1,0 +1,742 @@
+{
+  "format": {
+    "sheet": {
+      "width": 112,
+      "height": 96
+    },
+    "frame": {
+      "width": 16,
+      "height": 32
+    },
+    "rows": [
+      "down",
+      "up",
+      "right"
+    ],
+    "cols": [
+      "walk0",
+      "walk1",
+      "walk2",
+      "type0",
+      "type1",
+      "read0",
+      "read1"
+    ],
+    "note": "Sama dengan public/characters/char_N.png di repo. Kiri = baris right dicerminkan."
+  },
+  "layerOrder": [
+    "accessories:back",
+    "hair:back",
+    "body",
+    "eyes",
+    "shoes",
+    "bottom",
+    "top",
+    "accessories:mid",
+    "hair",
+    "hat",
+    "accessories:front"
+  ],
+  "hairUnderHatSuffix": "__hat",
+  "categories": {
+    "body": [
+      {
+        "id": "porcelain",
+        "file": "body/porcelain.png",
+        "hex": "#fbe2d0"
+      },
+      {
+        "id": "fair",
+        "file": "body/fair.png",
+        "hex": "#f3c9a5"
+      },
+      {
+        "id": "tan",
+        "file": "body/tan.png",
+        "hex": "#e0a878"
+      },
+      {
+        "id": "bronze",
+        "file": "body/bronze.png",
+        "hex": "#c2865a"
+      },
+      {
+        "id": "brown",
+        "file": "body/brown.png",
+        "hex": "#94603c"
+      },
+      {
+        "id": "deep",
+        "file": "body/deep.png",
+        "hex": "#613c26"
+      }
+    ],
+    "eyes": [
+      {
+        "id": "dot",
+        "file": "eyes/dot.png"
+      },
+      {
+        "id": "classic",
+        "file": "eyes/classic.png"
+      },
+      {
+        "id": "brown",
+        "file": "eyes/brown.png"
+      },
+      {
+        "id": "big_blue",
+        "file": "eyes/big_blue.png"
+      },
+      {
+        "id": "lash_green",
+        "file": "eyes/lash_green.png"
+      },
+      {
+        "id": "happy",
+        "file": "eyes/happy.png"
+      },
+      {
+        "id": "sleepy",
+        "file": "eyes/sleepy.png"
+      },
+      {
+        "id": "angry",
+        "file": "eyes/angry.png"
+      },
+      {
+        "id": "wink",
+        "file": "eyes/wink.png"
+      },
+      {
+        "id": "gold",
+        "file": "eyes/gold.png"
+      }
+    ],
+    "hairColor": [
+      {
+        "id": "black",
+        "hex": "#2b2a33",
+        "dir": "hair/black",
+        "ramp": {
+          "h": "#535159",
+          "l": "#3c3943",
+          "m": "#2b2a33",
+          "d": "#222129",
+          "o": "#131217"
+        }
+      },
+      {
+        "id": "dark_brown",
+        "hex": "#4a3026",
+        "dir": "hair/dark_brown",
+        "ramp": {
+          "h": "#766556",
+          "l": "#5d4637",
+          "m": "#4a3026",
+          "d": "#3b1e1b",
+          "o": "#220d0f"
+        }
+      },
+      {
+        "id": "brown",
+        "hex": "#7a4a2b",
+        "dir": "hair/brown",
+        "ramp": {
+          "h": "#b29773",
+          "l": "#936b42",
+          "m": "#7a4a2b",
+          "d": "#622a1b",
+          "o": "#380c0b"
+        }
+      },
+      {
+        "id": "auburn",
+        "hex": "#9a3f25",
+        "dir": "hair/auburn",
+        "ramp": {
+          "h": "#daa47f",
+          "l": "#b76941",
+          "m": "#9a3f25",
+          "d": "#7b1712",
+          "o": "#47040d"
+        }
+      },
+      {
+        "id": "ginger",
+        "hex": "#d9722a",
+        "dir": "hair/ginger",
+        "ramp": {
+          "h": "#ffd18e",
+          "l": "#fdac50",
+          "m": "#d9722a",
+          "d": "#ae3511",
+          "o": "#640500"
+        }
+      },
+      {
+        "id": "blonde",
+        "hex": "#e9c15b",
+        "dir": "hair/blonde",
+        "ramp": {
+          "h": "#fff1aa",
+          "l": "#ffea7b",
+          "m": "#e9c15b",
+          "d": "#ba803b",
+          "o": "#6b371a"
+        }
+      },
+      {
+        "id": "platinum",
+        "hex": "#efe6cf",
+        "dir": "hair/platinum",
+        "ramp": {
+          "h": "#fffcec",
+          "l": "#fffae2",
+          "m": "#efe6cf",
+          "d": "#bfb2a3",
+          "o": "#6e625c"
+        }
+      },
+      {
+        "id": "silver",
+        "hex": "#a9b0bd",
+        "dir": "hair/silver",
+        "ramp": {
+          "h": "#f0f8ff",
+          "l": "#cad3de",
+          "m": "#a9b0bd",
+          "d": "#858897",
+          "o": "#4c4b57"
+        }
+      },
+      {
+        "id": "pink",
+        "hex": "#f08bb0",
+        "dir": "hair/pink",
+        "ramp": {
+          "h": "#ffc4cf",
+          "l": "#ffa4ba",
+          "m": "#f08bb0",
+          "d": "#c06697",
+          "o": "#6e345f"
+        }
+      },
+      {
+        "id": "purple",
+        "hex": "#8a5bd1",
+        "dir": "hair/purple",
+        "ramp": {
+          "h": "#deb0ff",
+          "l": "#bc7ff4",
+          "m": "#8a5bd1",
+          "d": "#553da7",
+          "o": "#2a1c60"
+        }
+      },
+      {
+        "id": "blue",
+        "hex": "#3f7fd6",
+        "dir": "hair/blue",
+        "ramp": {
+          "h": "#9cd8ff",
+          "l": "#64b6fa",
+          "m": "#3f7fd6",
+          "d": "#2445ab",
+          "o": "#0c1162"
+        }
+      },
+      {
+        "id": "green",
+        "hex": "#45a86b",
+        "dir": "hair/green",
+        "ramp": {
+          "h": "#9febaf",
+          "l": "#63c67d",
+          "m": "#45a86b",
+          "d": "#2e8660",
+          "o": "#144d3f"
+        }
+      }
+    ],
+    "hair": [
+      {
+        "id": "buzz",
+        "file": "hair/{color}/buzz.png",
+        "back": false
+      },
+      {
+        "id": "short",
+        "file": "hair/{color}/short.png",
+        "back": false
+      },
+      {
+        "id": "side_part",
+        "file": "hair/{color}/side_part.png",
+        "back": false
+      },
+      {
+        "id": "slick_back",
+        "file": "hair/{color}/slick_back.png",
+        "back": false
+      },
+      {
+        "id": "spiky",
+        "file": "hair/{color}/spiky.png",
+        "back": false
+      },
+      {
+        "id": "mohawk",
+        "file": "hair/{color}/mohawk.png",
+        "back": false
+      },
+      {
+        "id": "afro",
+        "file": "hair/{color}/afro.png",
+        "back": false
+      },
+      {
+        "id": "curly",
+        "file": "hair/{color}/curly.png",
+        "back": false
+      },
+      {
+        "id": "bowl",
+        "file": "hair/{color}/bowl.png",
+        "back": false
+      },
+      {
+        "id": "curtain",
+        "file": "hair/{color}/curtain.png",
+        "back": false
+      },
+      {
+        "id": "bob",
+        "file": "hair/{color}/bob.png",
+        "back": false
+      },
+      {
+        "id": "long_fringe",
+        "file": "hair/{color}/long_fringe.png",
+        "back": true
+      },
+      {
+        "id": "long_parted",
+        "file": "hair/{color}/long_parted.png",
+        "back": true
+      },
+      {
+        "id": "ponytail",
+        "file": "hair/{color}/ponytail.png",
+        "back": true
+      },
+      {
+        "id": "twin_tails",
+        "file": "hair/{color}/twin_tails.png",
+        "back": true
+      },
+      {
+        "id": "top_bun",
+        "file": "hair/{color}/top_bun.png",
+        "back": false
+      },
+      {
+        "id": "odango",
+        "file": "hair/{color}/odango.png",
+        "back": false
+      },
+      {
+        "id": "braids",
+        "file": "hair/{color}/braids.png",
+        "back": false
+      },
+      {
+        "id": "wavy_long",
+        "file": "hair/{color}/wavy_long.png",
+        "back": true
+      },
+      {
+        "id": "pompadour",
+        "file": "hair/{color}/pompadour.png",
+        "back": false
+      },
+      {
+        "id": "shaggy",
+        "file": "hair/{color}/shaggy.png",
+        "back": false
+      },
+      {
+        "id": "hime",
+        "file": "hair/{color}/hime.png",
+        "back": true
+      },
+      {
+        "id": "side_swept",
+        "file": "hair/{color}/side_swept.png",
+        "back": false
+      },
+      {
+        "id": "pixie",
+        "file": "hair/{color}/pixie.png",
+        "back": false
+      },
+      {
+        "id": "flat_top",
+        "file": "hair/{color}/flat_top.png",
+        "back": false
+      }
+    ],
+    "top": [
+      {
+        "id": "tee_white",
+        "file": "top/tee_white.png"
+      },
+      {
+        "id": "tee_red",
+        "file": "top/tee_red.png"
+      },
+      {
+        "id": "tee_graphic",
+        "file": "top/tee_graphic.png"
+      },
+      {
+        "id": "tee_striped",
+        "file": "top/tee_striped.png"
+      },
+      {
+        "id": "tank_top",
+        "file": "top/tank_top.png"
+      },
+      {
+        "id": "long_sleeve",
+        "file": "top/long_sleeve.png"
+      },
+      {
+        "id": "raglan",
+        "file": "top/raglan.png"
+      },
+      {
+        "id": "polo",
+        "file": "top/polo.png"
+      },
+      {
+        "id": "button_shirt",
+        "file": "top/button_shirt.png"
+      },
+      {
+        "id": "flannel",
+        "file": "top/flannel.png"
+      },
+      {
+        "id": "batik_shirt",
+        "file": "top/batik_shirt.png"
+      },
+      {
+        "id": "hoodie",
+        "file": "top/hoodie.png"
+      },
+      {
+        "id": "zip_hoodie",
+        "file": "top/zip_hoodie.png"
+      },
+      {
+        "id": "turtleneck",
+        "file": "top/turtleneck.png"
+      },
+      {
+        "id": "sweater_vest",
+        "file": "top/sweater_vest.png"
+      },
+      {
+        "id": "suit",
+        "file": "top/suit.png"
+      },
+      {
+        "id": "denim_jacket",
+        "file": "top/denim_jacket.png"
+      },
+      {
+        "id": "leather_jacket",
+        "file": "top/leather_jacket.png"
+      },
+      {
+        "id": "varsity_jacket",
+        "file": "top/varsity_jacket.png"
+      },
+      {
+        "id": "jersey",
+        "file": "top/jersey.png"
+      },
+      {
+        "id": "dress",
+        "file": "top/dress.png"
+      },
+      {
+        "id": "kimono",
+        "file": "top/kimono.png"
+      },
+      {
+        "id": "tunic",
+        "file": "top/tunic.png"
+      },
+      {
+        "id": "plate_armor",
+        "file": "top/plate_armor.png"
+      },
+      {
+        "id": "mage_robe",
+        "file": "top/mage_robe.png"
+      }
+    ],
+    "bottom": [
+      {
+        "id": "jeans_blue",
+        "file": "bottom/jeans_blue.png"
+      },
+      {
+        "id": "jeans_black",
+        "file": "bottom/jeans_black.png"
+      },
+      {
+        "id": "chinos",
+        "file": "bottom/chinos.png"
+      },
+      {
+        "id": "slacks",
+        "file": "bottom/slacks.png"
+      },
+      {
+        "id": "cargo_pants",
+        "file": "bottom/cargo_pants.png"
+      },
+      {
+        "id": "denim_shorts",
+        "file": "bottom/denim_shorts.png"
+      },
+      {
+        "id": "sport_shorts",
+        "file": "bottom/sport_shorts.png"
+      },
+      {
+        "id": "bermuda",
+        "file": "bottom/bermuda.png"
+      },
+      {
+        "id": "pleated_skirt",
+        "file": "bottom/pleated_skirt.png"
+      },
+      {
+        "id": "mini_skirt",
+        "file": "bottom/mini_skirt.png"
+      },
+      {
+        "id": "long_skirt",
+        "file": "bottom/long_skirt.png"
+      },
+      {
+        "id": "leggings",
+        "file": "bottom/leggings.png"
+      },
+      {
+        "id": "sweatpants",
+        "file": "bottom/sweatpants.png"
+      },
+      {
+        "id": "ripped_jeans",
+        "file": "bottom/ripped_jeans.png"
+      },
+      {
+        "id": "sarong",
+        "file": "bottom/sarong.png"
+      }
+    ],
+    "shoes": [
+      {
+        "id": "sneakers_white",
+        "file": "shoes/sneakers_white.png"
+      },
+      {
+        "id": "sneakers_red",
+        "file": "shoes/sneakers_red.png"
+      },
+      {
+        "id": "high_tops",
+        "file": "shoes/high_tops.png"
+      },
+      {
+        "id": "boots_brown",
+        "file": "shoes/boots_brown.png"
+      },
+      {
+        "id": "tall_boots",
+        "file": "shoes/tall_boots.png"
+      },
+      {
+        "id": "loafers",
+        "file": "shoes/loafers.png"
+      },
+      {
+        "id": "sandals",
+        "file": "shoes/sandals.png"
+      },
+      {
+        "id": "rain_boots",
+        "file": "shoes/rain_boots.png"
+      }
+    ],
+    "hat": [
+      {
+        "id": "baseball_cap",
+        "file": "hat/baseball_cap.png",
+        "hairUnderHat": true
+      },
+      {
+        "id": "beanie",
+        "file": "hat/beanie.png",
+        "hairUnderHat": true
+      },
+      {
+        "id": "top_hat",
+        "file": "hat/top_hat.png",
+        "hairUnderHat": true
+      },
+      {
+        "id": "cowboy",
+        "file": "hat/cowboy.png",
+        "hairUnderHat": true
+      },
+      {
+        "id": "caping",
+        "file": "hat/caping.png",
+        "hairUnderHat": true
+      },
+      {
+        "id": "crown",
+        "file": "hat/crown.png",
+        "hairUnderHat": false
+      },
+      {
+        "id": "wizard",
+        "file": "hat/wizard.png",
+        "hairUnderHat": true
+      },
+      {
+        "id": "knight_helmet",
+        "file": "hat/knight_helmet.png",
+        "hairUnderHat": true
+      },
+      {
+        "id": "beret",
+        "file": "hat/beret.png",
+        "hairUnderHat": true
+      },
+      {
+        "id": "peci",
+        "file": "hat/peci.png",
+        "hairUnderHat": true
+      },
+      {
+        "id": "blangkon",
+        "file": "hat/blangkon.png",
+        "hairUnderHat": true
+      },
+      {
+        "id": "bandana",
+        "file": "hat/bandana.png",
+        "hairUnderHat": false
+      }
+    ],
+    "accessories": [
+      {
+        "id": "glasses",
+        "file": "accessories/glasses.png",
+        "slot": "front",
+        "back": false
+      },
+      {
+        "id": "round_glasses",
+        "file": "accessories/round_glasses.png",
+        "slot": "front",
+        "back": false
+      },
+      {
+        "id": "sunglasses",
+        "file": "accessories/sunglasses.png",
+        "slot": "front",
+        "back": false
+      },
+      {
+        "id": "eyepatch",
+        "file": "accessories/eyepatch.png",
+        "slot": "front",
+        "back": false
+      },
+      {
+        "id": "face_mask",
+        "file": "accessories/face_mask.png",
+        "slot": "mid",
+        "back": false
+      },
+      {
+        "id": "scarf",
+        "file": "accessories/scarf.png",
+        "slot": "mid",
+        "back": false
+      },
+      {
+        "id": "necklace",
+        "file": "accessories/necklace.png",
+        "slot": "mid",
+        "back": false
+      },
+      {
+        "id": "earrings",
+        "file": "accessories/earrings.png",
+        "slot": "front",
+        "back": false
+      },
+      {
+        "id": "headphones",
+        "file": "accessories/headphones.png",
+        "slot": "front",
+        "back": false
+      },
+      {
+        "id": "bow_tie",
+        "file": "accessories/bow_tie.png",
+        "slot": "mid",
+        "back": false
+      },
+      {
+        "id": "necktie",
+        "file": "accessories/necktie.png",
+        "slot": "mid",
+        "back": false
+      },
+      {
+        "id": "cape",
+        "file": "accessories/cape.png",
+        "slot": "mid",
+        "back": true
+      },
+      {
+        "id": "backpack",
+        "file": "accessories/backpack.png",
+        "slot": "mid",
+        "back": false
+      },
+      {
+        "id": "angel_wings",
+        "file": "accessories/angel_wings.png",
+        "slot": "mid",
+        "back": true
+      },
+      {
+        "id": "flower_pin",
+        "file": "accessories/flower_pin.png",
+        "slot": "front",
+        "back": false
+      }
+    ]
+  }
+}

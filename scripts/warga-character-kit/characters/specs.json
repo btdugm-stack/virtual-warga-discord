@@ -1,0 +1,365 @@
+[
+  {
+    "file": "characters/char_0.png",
+    "spec": {
+      "body": "bronze",
+      "eyes": "wink",
+      "hair": "flat_top",
+      "hairColor": "silver",
+      "top": "sweater_vest",
+      "bottom": "pleated_skirt",
+      "shoes": "boots_brown",
+      "hat": "beret",
+      "accessories": [
+        "necktie"
+      ]
+    }
+  },
+  {
+    "file": "characters/char_1.png",
+    "spec": {
+      "body": "brown",
+      "eyes": "brown",
+      "hair": "slick_back",
+      "hairColor": "silver",
+      "top": "flannel",
+      "bottom": "chinos",
+      "shoes": "sneakers_red",
+      "hat": null,
+      "accessories": []
+    }
+  },
+  {
+    "file": "characters/char_2.png",
+    "spec": {
+      "body": "brown",
+      "eyes": "sleepy",
+      "hair": "twin_tails",
+      "hairColor": "blue",
+      "top": "plate_armor",
+      "bottom": "mini_skirt",
+      "shoes": "high_tops",
+      "hat": null,
+      "accessories": [
+        "round_glasses",
+        "glasses"
+      ]
+    }
+  },
+  {
+    "file": "characters/char_3.png",
+    "spec": {
+      "body": "porcelain",
+      "eyes": "big_blue",
+      "hair": "curly",
+      "hairColor": "purple",
+      "top": "tee_white",
+      "bottom": "sweatpants",
+      "shoes": "rain_boots",
+      "hat": null,
+      "accessories": [
+        "angel_wings",
+        "eyepatch"
+      ]
+    }
+  },
+  {
+    "file": "characters/char_4.png",
+    "spec": {
+      "body": "brown",
+      "eyes": "big_blue",
+      "hair": "shaggy",
+      "hairColor": "ginger",
+      "top": "suit",
+      "bottom": "jeans_blue",
+      "shoes": "sneakers_red",
+      "hat": null,
+      "accessories": [
+        "necklace"
+      ]
+    }
+  },
+  {
+    "file": "characters/char_5.png",
+    "spec": {
+      "body": "brown",
+      "eyes": "classic",
+      "hair": "side_swept",
+      "hairColor": "ginger",
+      "top": "batik_shirt",
+      "bottom": "sweatpants",
+      "shoes": "boots_brown",
+      "hat": null,
+      "accessories": []
+    }
+  },
+  {
+    "file": "characters/char_6.png",
+    "spec": {
+      "body": "porcelain",
+      "eyes": "gold",
+      "hair": "flat_top",
+      "hairColor": "dark_brown",
+      "top": "zip_hoodie",
+      "bottom": "jeans_black",
+      "shoes": "tall_boots",
+      "hat": null,
+      "accessories": []
+    }
+  },
+  {
+    "file": "characters/char_7.png",
+    "spec": {
+      "body": "deep",
+      "eyes": "dot",
+      "hair": "afro",
+      "hairColor": "auburn",
+      "top": "tee_red",
+      "bottom": "bermuda",
+      "shoes": "sandals",
+      "hat": null,
+      "accessories": [
+        "necklace"
+      ]
+    }
+  },
+  {
+    "file": "characters/char_8.png",
+    "spec": {
+      "body": "porcelain",
+      "eyes": "gold",
+      "hair": "shaggy",
+      "hairColor": "auburn",
+      "top": "mage_robe",
+      "bottom": "long_skirt",
+      "shoes": "tall_boots",
+      "hat": null,
+      "accessories": [
+        "scarf"
+      ]
+    }
+  },
+  {
+    "file": "characters/char_9.png",
+    "spec": {
+      "body": "porcelain",
+      "eyes": "sleepy",
+      "hair": "flat_top",
+      "hairColor": "dark_brown",
+      "top": "tank_top",
+      "bottom": "slacks",
+      "shoes": "sneakers_red",
+      "hat": "knight_helmet",
+      "accessories": [
+        "sunglasses"
+      ]
+    }
+  },
+  {
+    "file": "characters/char_10.png",
+    "spec": {
+      "body": "deep",
+      "eyes": "wink",
+      "hair": "afro",
+      "hairColor": "silver",
+      "top": "denim_jacket",
+      "bottom": "slacks",
+      "shoes": "high_tops",
+      "hat": null,
+      "accessories": [
+        "round_glasses"
+      ]
+    }
+  },
+  {
+    "file": "characters/char_11.png",
+    "spec": {
+      "body": "bronze",
+      "eyes": "sleepy",
+      "hair": "afro",
+      "hairColor": "black",
+      "top": "button_shirt",
+      "bottom": "ripped_jeans",
+      "shoes": "tall_boots",
+      "hat": null,
+      "accessories": []
+    }
+  },
+  {
+    "file": "characters/char_12.png",
+    "spec": {
+      "body": "fair",
+      "eyes": "brown",
+      "hair": "long_parted",
+      "hairColor": "purple",
+      "top": "dress",
+      "bottom": "mini_skirt",
+      "shoes": "sneakers_red",
+      "hat": "top_hat",
+      "accessories": []
+    }
+  },
+  {
+    "file": "characters/char_13.png",
+    "spec": {
+      "body": "bronze",
+      "eyes": "lash_green",
+      "hair": "buzz",
+      "hairColor": "purple",
+      "top": "batik_shirt",
+      "bottom": "ripped_jeans",
+      "shoes": "tall_boots",
+      "hat": null,
+      "accessories": []
+    }
+  },
+  {
+    "file": "characters/char_14.png",
+    "spec": {
+      "body": "porcelain",
+      "eyes": "big_blue",
+      "hair": "wavy_long",
+      "hairColor": "blue",
+      "top": "polo",
+      "bottom": "jeans_blue",
+      "shoes": "loafers",
+      "hat": null,
+      "accessories": [
+        "sunglasses"
+      ]
+    }
+  },
+  {
+    "file": "characters/char_15.png",
+    "spec": {
+      "body": "brown",
+      "eyes": "angry",
+      "hair": "wavy_long",
+      "hairColor": "brown",
+      "top": "zip_hoodie",
+      "bottom": "chinos",
+      "shoes": "high_tops",
+      "hat": null,
+      "accessories": []
+    }
+  },
+  {
+    "file": "characters/char_16.png",
+    "spec": {
+      "body": "brown",
+      "eyes": "big_blue",
+      "hair": "pixie",
+      "hairColor": "auburn",
+      "top": "long_sleeve",
+      "bottom": "leggings",
+      "shoes": "boots_brown",
+      "hat": null,
+      "accessories": [
+        "flower_pin"
+      ]
+    }
+  },
+  {
+    "file": "characters/char_17.png",
+    "spec": {
+      "body": "bronze",
+      "eyes": "gold",
+      "hair": "side_part",
+      "hairColor": "platinum",
+      "top": "tee_red",
+      "bottom": "jeans_black",
+      "shoes": "sneakers_red",
+      "hat": "caping",
+      "accessories": []
+    }
+  },
+  {
+    "file": "characters/char_18.png",
+    "spec": {
+      "body": "deep",
+      "eyes": "sleepy",
+      "hair": "bowl",
+      "hairColor": "platinum",
+      "top": "jersey",
+      "bottom": "bermuda",
+      "shoes": "tall_boots",
+      "hat": null,
+      "accessories": []
+    }
+  },
+  {
+    "file": "characters/char_19.png",
+    "spec": {
+      "body": "fair",
+      "eyes": "big_blue",
+      "hair": "top_bun",
+      "hairColor": "pink",
+      "top": "dress",
+      "bottom": "ripped_jeans",
+      "shoes": "sneakers_red",
+      "hat": null,
+      "accessories": []
+    }
+  },
+  {
+    "file": "characters/char_20.png",
+    "spec": {
+      "body": "deep",
+      "eyes": "dot",
+      "hair": "side_part",
+      "hairColor": "ginger",
+      "top": "turtleneck",
+      "bottom": "bermuda",
+      "shoes": "boots_brown",
+      "hat": "top_hat",
+      "accessories": [
+        "scarf"
+      ]
+    }
+  },
+  {
+    "file": "characters/char_21.png",
+    "spec": {
+      "body": "brown",
+      "eyes": "gold",
+      "hair": "spiky",
+      "hairColor": "dark_brown",
+      "top": "hoodie",
+      "bottom": "chinos",
+      "shoes": "rain_boots",
+      "hat": null,
+      "accessories": [
+        "bow_tie",
+        "sunglasses"
+      ]
+    }
+  },
+  {
+    "file": "characters/char_22.png",
+    "spec": {
+      "body": "brown",
+      "eyes": "dot",
+      "hair": "buzz",
+      "hairColor": "silver",
+      "top": "hoodie",
+      "bottom": "leggings",
+      "shoes": "tall_boots",
+      "hat": null,
+      "accessories": []
+    }
+  },
+  {
+    "file": "characters/char_23.png",
+    "spec": {
+      "body": "brown",
+      "eyes": "classic",
+      "hair": "top_bun",
+      "hairColor": "dark_brown",
+      "top": "plate_armor",
+      "bottom": "cargo_pants",
+      "shoes": "loafers",
+      "hat": "beanie",
+      "accessories": []
+    }
+  }
+]

@@ -6,3 +6,5 @@ agents
 workflows
 .env
 server/data/
+# The same sheets as server/character-kit/, which is the copy the server reads.
+scripts/warga-character-kit/kit/
