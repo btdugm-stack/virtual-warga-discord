@@ -10,7 +10,7 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { checkedSpec, codeOf, kitDescription, sheetPng } from "./character-kit.mjs";
+import { checkedSpec, codeOf, kitDescription, sheetPng, smoothSpec } from "./character-kit.mjs";
 import { CharacterStore } from "./character-store.mjs";
 import { ConfigStore, checkedSlots } from "./config-store.mjs";
 import { startDemo } from "./demo-source.mjs";
@@ -101,6 +101,8 @@ function profileOf(userId) {
   const { spec, activity } = characters.look(userId);
   return {
     look: codeOf(spec),
+    // A sheet drawn finer than the office's grid is scaled down, so it must not be drawn pixelated.
+    ...(smoothSpec(spec) ? { smooth: true } : {}),
     // Not sent on: tells the snapshot whether this member lets their game or music be shown.
     // Demo members are invented, so there is nobody to ask.
     sharesActivity: activity || world.demo,
@@ -253,14 +255,14 @@ async function handleApi(req, res, route) {
     return;
   }
 
-  const lookCode = /^\/api\/character\/([0-9a-z_]{1,64})\.png$/.exec(route)?.[1];
+  const lookCode = /^\/api\/character\/([0-9a-z_-]{1,64})\.png$/.exec(route)?.[1];
   if (lookCode && req.method === "GET") {
     const sheet = sheetPng(lookCode);
     if (!sheet) {
       sendJson(res, 404, { error: "not_found" });
       return;
     }
-    // A code always spells the same character, so its sheet never changes.
+    // A code spells one character and, for a ready-made one, which version of its art, so this never changes.
     res.writeHead(200, { "Content-Type": "image/png", "Cache-Control": "public, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff" });
     res.end(sheet);
     return;

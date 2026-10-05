@@ -111,8 +111,11 @@ How it is put together:
   and serves the result at `/api/character/<code>.png`. Adding a part means adding its sheet and its
   manifest entry; nothing else names the parts.
 - A ready-made character is one whole sheet in `server/character-kit/whole/`, worn as it is. Both pickers
-  offer them under **Karakter jadi**. To add one, put a 112×96 PNG there (lower-case letters, digits, and
-  underscores in the name; the name is what the pickers show) and restart the server.
+  offer them under **Karakter jadi**. To add one, put a PNG there (lower-case letters, digits, and
+  underscores in the name; the name is what the pickers show) and restart the server. Such a sheet may also
+  be drawn finer than 112×96, at any whole multiple of it, keeping the same 7×3 frames: every character is
+  drawn at the same size, so a finer sheet only carries more detail, and is scaled down smoothly rather
+  than pixelated.
 - Choices are saved in `server/data/characters.json`, keyed by Discord user id and naming each part by id.
 - Profile pictures are fetched by the server and passed on under the member's public id, so the picture's
   real address (which contains the Discord id) never reaches a browser.

@@ -9,6 +9,8 @@ type Draft = { spec: CharacterSpec; photo: boolean; activity: boolean };
 
 /** `batik_shirt` → `Batik shirt`. The kit names its parts in English ids; this is all the labelling they get. */
 const named = (id: string) => (id.charAt(0).toUpperCase() + id.slice(1)).replaceAll("_", " ");
+/** Ready-made characters are named after someone, so every word is capitalised: `ksatria_ezra_peler`. */
+const namedWhole = (id: string) => id.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 
 /** The look's code, spelled from the digits the server gave for each option. The server checks it again. */
 function codeOf(kit: Kit, spec: CharacterSpec): string {
@@ -19,7 +21,14 @@ function codeOf(kit: Kit, spec: CharacterSpec): string {
   return kit.version + digits.join("") + mask.toString(36).padStart(kit.accessoryDigits, "0");
 }
 
-const sheetOf = (kit: Kit, spec: CharacterSpec) => ({ backgroundImage: `url("/api/character/${codeOf(kit, spec)}.png")` }) as CSSProperties;
+function sheetOf(kit: Kit, spec: CharacterSpec): CSSProperties {
+  const whole = spec.whole ? kit.wholes.find(({ id }) => id === spec.whole) : undefined;
+  return {
+    backgroundImage: `url("/api/character/${codeOf(kit, spec)}.png")`,
+    // A sheet finer than the office's grid is shrunk to fit, so pixelating it would throw the detail away.
+    ...(whole?.smooth ? { imageRendering: "auto" } : {}),
+  };
+}
 
 function randomSpec(kit: Kit): CharacterSpec {
   const pick = <T,>(list: readonly T[]) => list[Math.floor(Math.random() * list.length)];
@@ -130,7 +139,7 @@ export function CharacterBuilder({ kit, me, locale, onSignOut }: { kit: Kit; me:
           {section === "whole" ? (
             <>
               {tile("assembled", localized(COPY.builderAssembled, locale), withWhole(null), !draft.spec.whole)}
-              {kit.wholes.map(({ id }) => tile(id, named(id), withWhole(id), draft.spec.whole === id))}
+              {kit.wholes.map(({ id }) => tile(id, namedWhole(id), withWhole(id), draft.spec.whole === id))}
             </>
           ) : part ? (
             <>

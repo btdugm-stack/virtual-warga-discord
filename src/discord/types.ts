@@ -64,6 +64,8 @@ export type Member = {
   readonly reaction?: { readonly id: number; readonly text?: string; readonly image?: string } | null;
   /** A move their character is doing right now. `id` changes with each `/emote`. */
   readonly emote?: { readonly id: number; readonly kind: EmoteKind } | null;
+  /** Their character's sheet is drawn finer than the office's grid, so it is scaled down smoothly. */
+  readonly smooth?: boolean;
   /** Their level on the server's MEE6 leaderboard, when it could be read. */
   readonly level?: number | null;
   /** What their Discord status says they are doing, if they chose to show it. Only the name of the game or app. */
@@ -122,7 +124,7 @@ export type Kit = {
   readonly accessoryDigits: number;
   readonly accessoriesMax: number;
   /** Ready-made characters, each with its whole code. */
-  readonly wholes: readonly { readonly id: string; readonly code: string }[];
+  readonly wholes: readonly { readonly id: string; readonly code: string; readonly smooth: boolean }[];
   /** "Masuk dengan Discord" is set up on this server. */
   readonly oauth: boolean;
 };

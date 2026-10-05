@@ -44,6 +44,9 @@ const SECTIONS = [
 
 /** `batik_shirt` → `Batik shirt`. The kit names its parts in English ids; this is all the labelling they get. */
 const named = (id) => (id.charAt(0).toUpperCase() + id.slice(1)).replaceAll("_", " ");
+/** Ready-made characters are named after someone, so every word is capitalised: `ksatria_ezra_peler`. */
+const namedWhole = (id) => id.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+const labelFor = (key) => (key === "whole" ? namedWhole : named);
 
 const idsOf = (key) => (key === "accessories" ? ACCESSORIES : key === "whole" ? WHOLES : PARTS.find((part) => part.key === key).ids);
 
@@ -61,7 +64,7 @@ function parseCustomId(id) {
 
 function chosenText(spec, key, none) {
   if (key === "accessories") return spec.accessories.length ? spec.accessories.map(named).join(", ") : none;
-  return spec[key] === null ? none : named(spec[key]);
+  return spec[key] === null || spec[key] === undefined ? none : labelFor(key)(spec[key]);
 }
 
 function summary(draft) {
@@ -94,7 +97,7 @@ function optionMenu(draft) {
   const { key, none } = SECTIONS[draft.section];
   const several = key === "accessories";
   const current = several ? draft.spec.accessories : [draft.spec[key] ?? NONE];
-  const options = idsOf(key).map((id) => ({ label: named(id), value: id, default: current.includes(id) }));
+  const options = idsOf(key).map((id) => ({ label: labelFor(key)(id), value: id, default: current.includes(id) }));
   // Several accessories can be picked at once, and picking none of them is how to go without.
   if (none && !several) options.unshift({ label: none, value: NONE, default: current.includes(NONE) });
   return {
