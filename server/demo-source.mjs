@@ -13,6 +13,14 @@ const NAMES = [
   "Yanto", "Lina", "Rudi", "Maya", "Hendra", "Tuti", "Fajar", "Indah", "Gilang", "Nita", "Wahyu", "Ayu",
 ];
 const STATUSES = ["online", "online", "online", "idle", "dnd"];
+const ACTIVITIES = [
+  null, null,
+  { kind: "play", name: "Mobile Legends" }, { kind: "play", name: "Valorant" },
+  { kind: "listen", name: "Spotify" }, { kind: "watch", name: "YouTube" }, { kind: "stream", name: "Twitch" },
+];
+const VOICE_STATES = [null, null, "mute", "deaf", "live", "video"];
+const REACTIONS = ["😂", "👍", "🔥", "❤️", "😭", "🙏"];
+const EMOTES = ["lambai", "joget", "lompat", "putar", "baca"];
 
 const pick = (list) => list[Math.floor(Math.random() * list.length)];
 
@@ -32,7 +40,10 @@ export function startDemo(world) {
   }
   for (const person of people) {
     world.addMember(person.guild.id, person.id, person.name);
-    if (Math.random() < 0.7) world.setPresence(person.guild.id, person.id, pick(STATUSES), person.name, { silent: true });
+    if (Math.random() < 0.7) {
+      world.setPresence(person.guild.id, person.id, pick(STATUSES), person.name, { silent: true });
+      world.setActivity(person.id, pick(ACTIVITIES));
+    }
   }
   world.setStatus("ready");
 
@@ -44,12 +55,20 @@ export function startDemo(world) {
     const roll = Math.random();
     if (user.status === "offline") {
       if (roll < 0.6) world.setPresence(person.guild.id, person.id, "online", person.name);
-    } else if (roll < 0.4) {
+    } else if (roll < 0.15) {
+      world.noteTyping(person.guild.id, person.id, pick(channelsOf(person.guild, "text")).id, person.name);
+    } else if (roll < 0.35) {
       world.noteChat(person.guild.id, person.id, pick(channelsOf(person.guild, "text")).id, person.name);
-    } else if (roll < 0.6) {
+    } else if (roll < 0.45) {
+      world.noteReaction(person.guild.id, person.id, { text: pick(REACTIONS) }, person.name);
+    } else if (roll < 0.55) {
+      world.setEmote(person.id, pick(EMOTES));
+    } else if (roll < 0.7) {
       const inVoice = world.voice.has(person.id);
-      world.setVoice(person.guild.id, person.id, inVoice ? null : pick(channelsOf(person.guild, "voice")).id, person.name);
-    } else if (roll < 0.85) {
+      world.setVoice(person.guild.id, person.id, inVoice ? null : pick(channelsOf(person.guild, "voice")).id, person.name, { state: pick(VOICE_STATES) });
+    } else if (roll < 0.8) {
+      world.setActivity(person.id, pick(ACTIVITIES));
+    } else if (roll < 0.92) {
       world.setPresence(person.guild.id, person.id, pick(STATUSES), person.name);
     } else {
       world.setVoice(person.guild.id, person.id, null, person.name);

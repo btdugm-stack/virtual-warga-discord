@@ -10,11 +10,12 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { codeOf, sheetPng } from "./character-kit.mjs";
+import { checkedSpec, codeOf, kitDescription, sheetPng } from "./character-kit.mjs";
 import { CharacterStore } from "./character-store.mjs";
 import { ConfigStore, checkedSlots } from "./config-store.mjs";
 import { startDemo } from "./demo-source.mjs";
 import { LayoutStore, checkedLayout } from "./layout-store.mjs";
+import { MemberSessions } from "./member-sessions.mjs";
 import { World } from "./world.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -22,6 +23,13 @@ const DIST = path.join(ROOT, "dist");
 const PORT = Number(process.env.PORT) || 8787;
 const TOKEN = process.env.DISCORD_TOKEN?.trim() ?? "";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "";
+/** Where visitors reach this site. Personal links from Discord and the Discord sign-in both lead back here. */
+const PUBLIC_URL = process.env.PUBLIC_URL?.trim() || `http://localhost:${PORT}`;
+const members = new MemberSessions({
+  publicUrl: PUBLIC_URL,
+  clientId: process.env.DISCORD_CLIENT_ID?.trim(),
+  clientSecret: process.env.DISCORD_CLIENT_SECRET?.trim(),
+});
 const CONFIG_FILE = process.env.CONFIG_FILE || path.join(ROOT, "server", "data", "rooms.json");
 
 const BODY_MAX = 16 * 1024;
@@ -87,10 +95,14 @@ function wornAvatar(userId) {
  * `/api/character/<look>.png`. `avatar` is not the picture's address (that contains the Discord id) but a
  * short tag that changes with the picture; the browser asks `/api/avatar/<public id>` for the image itself.
  */
-function lookOf(userId) {
+function profileOf(userId) {
   const url = wornAvatar(userId);
+  const { spec, activity } = characters.look(userId);
   return {
-    look: codeOf(characters.look(userId).spec),
+    look: codeOf(spec),
+    // Not sent on: tells the snapshot whether this member lets their game or music be shown.
+    // Demo members are invented, so there is nobody to ask.
+    sharesActivity: activity || world.demo,
     avatar: url ? crypto.createHash("sha256").update(url).digest("base64url").slice(0, 8) : null,
   };
 }
@@ -122,7 +134,7 @@ function avatarImage(url) {
 function payload() {
   const slots = config.slots(world);
   world.setRelevant(slots);
-  return JSON.stringify({ ...world.snapshot(slots, publicId, lookOf), layoutRev: layouts.rev });
+  return JSON.stringify({ ...world.snapshot(slots, publicId, profileOf), layoutRev: layouts.rev });
 }
 
 function push() {
@@ -240,7 +252,7 @@ async function handleApi(req, res, route) {
     return;
   }
 
-  const lookCode = /^\/api\/character\/([0-9a-z]{1,32})\.png$/.exec(route)?.[1];
+  const lookCode = /^\/api\/character\/([0-9a-z_]{1,64})\.png$/.exec(route)?.[1];
   if (lookCode && req.method === "GET") {
     const sheet = sheetPng(lookCode);
     if (!sheet) {
@@ -271,6 +283,81 @@ async function handleApi(req, res, route) {
     // The browser's request carries the picture's tag, so a new picture is a new address and this can be cached.
     res.writeHead(200, { "Content-Type": "image/png", "Cache-Control": "public, max-age=86400", "X-Content-Type-Options": "nosniff" });
     res.end(image);
+    return;
+  }
+
+  if (route === "/api/kit" && req.method === "GET") {
+    sendJson(res, 200, { ...kitDescription(), oauth: members.oauth });
+    return;
+  }
+
+  if (route === "/api/auth/discord" && req.method === "GET") {
+    if (!members.oauth) {
+      sendJson(res, 503, { error: "oauth_disabled" });
+      return;
+    }
+    res.writeHead(302, { Location: members.authorizeUrl(), "Cache-Control": "no-store" }).end();
+    return;
+  }
+
+  if (route === "/api/auth/discord/callback" && req.method === "GET") {
+    const query = new URL(req.url ?? "/", "http://localhost").searchParams;
+    // A refusal on Discord's side (the visitor pressed Cancel) comes back here too, without a code.
+    const token = members.oauth ? await members.finish(query.get("code"), query.get("state")).catch(() => null) : null;
+    res.writeHead(302, {
+      Location: token ? members.builderUrl : `${members.builderUrl}=gagal`,
+      "Cache-Control": "no-store",
+      ...(token ? { "Set-Cookie": members.cookie(token) } : {}),
+    }).end();
+    return;
+  }
+
+  if (route === "/api/me/session" && req.method === "POST") {
+    const body = await readJson(req);
+    // Demo members are invented, so the demo lets anyone try the builder as the first of them.
+    const demoUser = world.demo && body?.ticket === "demo" ? world.users.keys().next().value : null;
+    const token = demoUser ? members.open(demoUser) : members.redeem(body?.ticket);
+    if (!token) {
+      sendJson(res, 401, { error: "ticket_invalid" });
+      return;
+    }
+    res.setHeader("Set-Cookie", members.cookie(token));
+    sendJson(res, 200, { ok: true });
+    return;
+  }
+
+  if (route === "/api/me/logout" && req.method === "POST") {
+    members.close(req);
+    res.setHeader("Set-Cookie", members.cookie(null));
+    sendJson(res, 200, { ok: true });
+    return;
+  }
+
+  if (route === "/api/me" || route === "/api/me/character") {
+    const userId = members.userOf(req);
+    if (!userId) {
+      sendJson(res, 401, { error: "signed_out" });
+      return;
+    }
+    // Signed in with Discord, but not someone any shown server has: there is no character to build.
+    const user = world.users.get(userId);
+    if (!user) {
+      sendJson(res, 403, { error: "not_a_member" });
+      return;
+    }
+    if (route === "/api/me/character" && req.method === "PUT") {
+      const body = await readJson(req);
+      const spec = body?.spec === null ? null : checkedSpec(body?.spec);
+      if (spec === null && body?.spec !== null) throw new Error("Invalid character");
+      // Like the picker in Discord: the automatic look is stored as "nothing chosen".
+      const automatic = spec !== null && codeOf(spec) === codeOf(characters.automatic(userId));
+      characters.update(userId, { spec: automatic ? null : spec, photo: body?.photo === true, activity: body?.activity === true });
+      world.touch();
+    } else if (req.method !== "GET") {
+      sendJson(res, 404, { error: "not_found" });
+      return;
+    }
+    sendJson(res, 200, { name: user.name, ...characters.look(userId), automatic: characters.automatic(userId) });
     return;
   }
 
@@ -383,7 +470,7 @@ const server = http.createServer((req, res) => {
 
 if (TOKEN) {
   const { startDiscord } = await import("./discord-source.mjs");
-  ({ avatarUrl } = startDiscord(world, TOKEN, characters));
+  ({ avatarUrl } = startDiscord(world, TOKEN, characters, (userId) => members.ticketUrl(userId)));
 } else {
   console.warn("[server] DISCORD_TOKEN belum diisi — berjalan dalam mode demo dengan data karangan.");
   startDemo(world);

@@ -1,5 +1,5 @@
 import { localized, type Locale, type LocalizedText } from "../i18n";
-import type { FeedKind, Presence } from "./types";
+import type { ActivityKind, EmoteKind, FeedKind, PartKey, Presence, VoiceState } from "./types";
 
 /**
  * Copy for everything Discord-related. The office editor's copy stays in `i18n.ts`.
@@ -56,7 +56,14 @@ export const COPY = {
   stripLabel: both("Ruangan", "Rooms"),
   roomEmpty: both("Belum dihubungkan", "Not bound"),
   roomMissing: both("Tidak ditemukan", "Not found"),
+  roomBlocked: both("Bot tidak punya akses", "Bot has no access"),
+  warnBlocked: both(
+    "Bot tidak diizinkan melihat channel {rooms}, jadi chat di sana tidak terbaca. Beri role bot izin View Channel di channel itu.",
+    "The bot is not allowed to see the channel for {rooms}, so chat there goes unnoticed. Give the bot's role View Channel on it.",
+  ),
+  channelBlocked: both("{name} (bot tidak punya akses)", "{name} (bot has no access)"),
   roomIdle: both("Ruang AFK", "AFK room"),
+  roomCorridor: both("Koridor", "Corridor"),
   roomCount: both("{count} warga", "{count} members"),
   roomOverflow: both("+{count} lagi", "+{count} more"),
 
@@ -78,6 +85,7 @@ export const COPY = {
   agentSummary: both("{name}, {presence}, {room}, {activity}", "{name}, {presence}, {room}, {activity}"),
   activityChat: both("Sedang Gibah di #{where}", "Chatting in #{where}"),
   activityVoice: both("Di voice {where}", "In voice {where}"),
+  activityTyping: both("Sedang mengetik di #{where}", "Typing in #{where}"),
   activityIdle: both("Lagi bengong", "Away"),
   activityOffline: both("Offline", "Offline"),
   activityNone: both("Nongkrong", "Hanging out"),
@@ -87,8 +95,8 @@ export const COPY = {
   guideTitle: both("Rakit karaktermu", "Build your character"),
   guideClose: both("Tutup panduan karakter", "Close the character guide"),
   guideIntro: both(
-    "Ketik /karakter di server Discord yang ada bot ini. Bot menampilkan pratinjau yang hanya kamu lihat, dari depan, belakang, dan samping. Sebelum tombol Pakai ditekan, tidak ada yang berubah di kantor, dan hanya kamu yang bisa mengubah karaktermu.",
-    "Type /karakter in a Discord server that has this bot. The bot shows a preview only you can see, from the front, the back, and the side. Nothing changes in the office until you press Pakai, and only you can change your character.",
+    "Untuk merakit karaktermu di sini, situs perlu tahu akun Discord-mu. Ketik /karakter di server Discord yang ada bot ini, lalu tekan Rakit di situs: tautannya hanya untukmu dan berlaku 10 menit. Kamu juga bisa merakit langsung di Discord lewat menu di balasan /karakter. Hanya kamu yang bisa mengubah karaktermu.",
+    "To build your character here, the site needs to know your Discord account. Type /karakter in a Discord server that has this bot, then press Rakit di situs: the link is yours alone and lasts 10 minutes. You can also build it right in Discord with the menus in the /karakter reply. Only you can change your character.",
   ),
   guideParts: both(
     "Menu pertama memilih bagian yang diubah: kulit, mata, gaya rambut, warna rambut, atasan, bawahan, sepatu, topi, atau aksesori (sampai tiga). Menu kedua memilih isinya. Acak membuat karakter baru secara acak, Bawaan mengembalikan karakter otomatismu.",
@@ -98,6 +106,41 @@ export const COPY = {
     "Foto profil Discord-mu tidak ditampilkan, kecuali kamu menyalakannya lewat tombol Foto profil. Foto itu lalu dipakai sebagai wajah karakter dan hanya menutupi wajah, jadi rambut dan topi tetap terlihat.",
     "Your Discord profile picture is not shown unless you turn it on with the Foto profil button. It is then worn as the character's face and covers the face only, so hair and hat stay visible.",
   ),
+  guideActivity: both(
+    "Game, musik, atau tontonan yang sedang kamu buka juga tidak ditampilkan, kecuali kamu menyalakannya lewat tombol Aktivitas. Yang tampil hanya nama game atau aplikasinya.",
+    "The game, music, or video you have open is not shown either unless you turn it on with the Aktivitas button. Only the name of the game or app is shown.",
+  ),
+  guideEmote: both(
+    "Ketik /emote untuk membuat karaktermu melambai, joget, melompat, berputar, atau membaca selama beberapa detik.",
+    "Type /emote to make your character wave, dance, jump, spin, or read for a few seconds.",
+  ),
+  signInDiscord: both("Masuk dengan Discord", "Sign in with Discord"),
+  signInDemo: both("Coba perakit (mode demo)", "Try the builder (demo mode)"),
+  signInFailed: both("Masuk dengan Discord tidak selesai. Coba lagi.", "Signing in with Discord did not finish. Try again."),
+  ticketSpent: both(
+    "Tautan itu sudah dipakai atau sudah lewat 10 menit. Ketik /karakter lagi di Discord untuk tautan baru.",
+    "That link was already used or is more than 10 minutes old. Type /karakter in Discord again for a new one.",
+  ),
+  notAMember: both(
+    "Akun Discord itu bukan anggota server yang ditampilkan di kantor ini, jadi belum punya karakter.",
+    "That Discord account is not a member of a server this office shows, so it has no character yet.",
+  ),
+  builderPreview: both("Karaktermu dari depan, belakang, dan samping", "Your character from the front, the back, and the side"),
+  builderFor: both("Karakter {name}", "{name}'s character"),
+  builderSections: both("Bagian karakter", "Character parts"),
+  builderNone: both("Tanpa", "None"),
+  builderAssembled: both("Rakit sendiri", "Assembled"),
+  builderAccessories: both("Pilih sampai {max} aksesori. Klik lagi untuk melepas.", "Pick up to {max} accessories. Click again to take one off."),
+  builderPhotoOn: both("Foto profil: dipakai", "Profile picture: worn"),
+  builderPhotoOff: both("Foto profil: tidak dipakai", "Profile picture: not worn"),
+  builderActivityOn: both("Aktivitas: ditampilkan", "Activity: shown"),
+  builderActivityOff: both("Aktivitas: tidak ditampilkan", "Activity: not shown"),
+  builderRandom: both("Acak", "Random"),
+  builderAutomatic: both("Bawaan", "Automatic"),
+  builderApply: both("Terapkan", "Apply"),
+  builderUnsaved: both("Belum diterapkan.", "Not applied yet."),
+  builderSaved: both("Diterapkan. Karaktermu di kantor sudah berganti.", "Applied. Your character in the office has changed."),
+  builderSignOut: both("Keluar", "Sign out"),
   guideCatalogAlt: both(
     "Katalog semua bagian karakter: 6 warna kulit, 10 mata, 25 gaya rambut, 12 warna rambut, 25 atasan, 15 bawahan, 8 sepatu, 12 topi, dan 15 aksesori, masing-masing dilihat dari depan, belakang, dan samping.",
     "Catalog of every character part: 6 skin tones, 10 eyes, 25 hair styles, 12 hair colors, 25 tops, 15 bottoms, 8 shoes, 12 hats, and 15 accessories, each seen from the front, the back, and the side.",
@@ -145,6 +188,38 @@ export const COPY = {
   saveIncomplete: both("Lengkapi server dan channel di setiap ruangan yang diisi.", "Pick a server and channel for every room in use."),
   resetAuto: both("Kembali ke otomatis", "Back to automatic"),
 } as const satisfies Record<string, LocalizedText>;
+
+export const SECTION_LABELS = {
+  whole: both("Karakter jadi", "Ready-made"),
+  body: both("Kulit", "Skin"),
+  eyes: both("Mata", "Eyes"),
+  hair: both("Gaya rambut", "Hair style"),
+  hairColor: both("Warna rambut", "Hair color"),
+  top: both("Atasan", "Top"),
+  bottom: both("Bawahan", "Bottom"),
+  shoes: both("Sepatu", "Shoes"),
+  hat: both("Topi", "Hat"),
+  accessories: both("Aksesori", "Accessories"),
+} as const satisfies Record<PartKey | "accessories" | "whole", LocalizedText>;
+
+/** `{name}` is the game or app, as Discord names it. */
+export const DOING_LABELS = {
+  play: both("Main {name}", "Playing {name}"),
+  stream: both("Streaming di {name}", "Streaming on {name}"),
+  listen: both("Mendengarkan {name}", "Listening to {name}"),
+  watch: both("Menonton {name}", "Watching {name}"),
+  compete: both("Bertanding di {name}", "Competing in {name}"),
+} as const satisfies Record<ActivityKind, LocalizedText>;
+
+export const VOICE_STATE_LABELS = {
+  live: both("live", "live"),
+  video: both("kamera", "camera"),
+  deaf: both("tuli", "deafened"),
+  mute: both("bisu", "muted"),
+} as const satisfies Record<VoiceState, LocalizedText>;
+
+/** The glyph that floats up when a character starts an emote. */
+export const EMOTE_GLYPHS = { lambai: "👋", joget: "🎶", lompat: "✨", putar: "💫", baca: "📖" } as const satisfies Record<EmoteKind, string>;
 
 export const PRESENCE_LABELS = {
   online: both("Online", "Online"),

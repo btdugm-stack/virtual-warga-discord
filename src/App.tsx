@@ -6,7 +6,7 @@ import { COPY, FEED_LABELS, PRESENCE_LABELS, fill } from "./discord/copy";
 import { activityText, roomNote, roomTitle } from "./discord/rooms";
 import type { Member, RoomState, Snapshot } from "./discord/types";
 import { useDiscord, type LinkState } from "./discord/useDiscord";
-import { ROOM_ZONES } from "./game/office-world";
+import { CORRIDOR_ROOM, ROOM_ZONES } from "./game/office-world";
 import { DEFAULT_LOCALE, LOCALES, LOCALE_LABELS, checkedLocale, localized, type Locale, type LocalizedText } from "./i18n";
 import { OfficeWorld } from "./OfficeWorld";
 import { SettingsPanel } from "./SettingsPanel";
@@ -48,6 +48,30 @@ const PANES = [
   { id: "roster", label: COPY.tabRoster },
 ] as const satisfies readonly { id: Pane; label: LocalizedText }[];
 
+/** The roster's groups: every room, then the corridor, whose number follows the last room's. */
+const ROSTER_GROUPS = [
+  ...ROOM_ZONES.map(({ id, code, accent }) => ({ id, code, accent })),
+  { id: "corridor", code: "KOR", accent: THEME.line },
+];
+if (ROSTER_GROUPS.length !== CORRIDOR_ROOM + 1) throw new Error("The corridor must be the roster's last group");
+
+/** `?karakter` in the address opens the character dialog; `?karakter=<ticket>` is a personal link from Discord. */
+const BUILDER_PARAM = "karakter";
+
+/**
+ * Read the dialog request out of the address and take it out again: a ticket works once, and it should not
+ * sit in the address bar or the history afterwards.
+ */
+function takeBuilderRequest(): { open: boolean; ticket: string | null } {
+  const query = new URLSearchParams(window.location.search);
+  if (!query.has(BUILDER_PARAM)) return { open: false, ticket: null };
+  const ticket = query.get(BUILDER_PARAM) || null;
+  query.delete(BUILDER_PARAM);
+  const rest = query.toString();
+  window.history.replaceState(null, "", `${window.location.pathname}${rest ? `?${rest}` : ""}${window.location.hash}`);
+  return { open: true, ticket };
+}
+
 // Stable empties: a new array each render would make the office re-seat everyone.
 const NO_ROOMS: readonly RoomState[] = [];
 const NO_MEMBERS: readonly Member[] = [];
@@ -81,7 +105,15 @@ function useNow() {
 }
 
 /** At most one line under the room strip, the most pressing problem first. */
-function warningFor(snapshot: Snapshot | null, link: LinkState): LocalizedText | null {
+function warningFor(snapshot: Snapshot | null, link: LinkState, locale: Locale): string | null {
+  const fixed = fixedWarningFor(snapshot, link);
+  if (fixed) return localized(fixed, locale);
+  // A room that looks empty for a reason only the server's owner can fix.
+  const blocked = (snapshot?.rooms ?? []).flatMap((room, index) => (room.blocked ? [roomTitle(room, index, locale)] : []));
+  return blocked.length ? fill(COPY.warnBlocked, locale, { rooms: blocked.join(", ") }) : null;
+}
+
+function fixedWarningFor(snapshot: Snapshot | null, link: LinkState): LocalizedText | null {
   if (link === "lost") return COPY.warnLost;
   if (!snapshot) return null;
   if (snapshot.status === "error") {
@@ -99,7 +131,10 @@ export function App() {
   const [pane, setPane] = useState<Pane>("office");
   const [activeRoom, setActiveRoom] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [guideOpen, setGuideOpen] = useState(false);
+  const [builderRequest] = useState(takeBuilderRequest);
+  const [guideOpen, setGuideOpen] = useState(builderRequest.open);
+  // The ticket from the address is offered to the dialog once; reopening it later must not replay it.
+  const [ticket, setTicket] = useState(builderRequest.ticket);
   // The furniture editor takes over the side dock while it is open, so it never covers the floor it edits.
   const [editorHost, setEditorHost] = useState<HTMLDivElement | null>(null);
   const [editing, setEditing] = useState(false);
@@ -113,7 +148,7 @@ export function App() {
   const rooms = snapshot?.rooms ?? NO_ROOMS;
   const members = snapshot?.members ?? NO_MEMBERS;
   const feed = snapshot?.feed ?? [];
-  const warning = warningFor(snapshot, link);
+  const warning = warningFor(snapshot, link, locale);
   const clockTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const feedTime = useMemo(
     () => new Intl.DateTimeFormat(DATE_LOCALES[locale], { hour: "2-digit", minute: "2-digit" }),
@@ -176,7 +211,7 @@ export function App() {
           })}
         </ol>
 
-        {warning ? <p className="app-warning" role="status">{localized(warning, locale)}</p> : null}
+        {warning ? <p className="app-warning" role="status">{warning}</p> : null}
       </div>
 
       <div className="pane-tabs" role="group" aria-label={localized(COPY.paneTabs, locale)}>
@@ -226,7 +261,7 @@ export function App() {
           <section className="roster-panel" aria-labelledby="roster-title">
             <h2 id="roster-title">{localized(COPY.rosterTitle, locale)}</h2>
             {members.length === 0 ? <p className="work-empty">{localized(COPY.rosterEmpty, locale)}</p> : null}
-            {ROOM_ZONES.map((zone, index) => {
+            {ROSTER_GROUPS.map((zone, index) => {
               const here = members.filter(({ room }) => room === index);
               if (!here.length) return null;
               const hidden = rooms[index]?.overflow ?? 0;
@@ -258,7 +293,17 @@ export function App() {
       </div>
 
       {settingsOpen ? <SettingsPanel locale={locale} onClose={() => setSettingsOpen(false)} /> : null}
-      {guideOpen ? <CharacterGuide locale={locale} onClose={() => setGuideOpen(false)} /> : null}
+      {guideOpen ? (
+        <CharacterGuide
+          demo={snapshot?.demo ?? false}
+          locale={locale}
+          onClose={() => {
+            setGuideOpen(false);
+            setTicket(null);
+          }}
+          ticket={ticket}
+        />
+      ) : null}
     </div>
   );
 }

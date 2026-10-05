@@ -5,11 +5,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { adminToken, storeAdminToken } from "./discord/admin";
 import { AGENT_HUES, SPRITE_COUNT } from "./discord/characters";
-import { COPY, PRESENCE_LABELS, fill } from "./discord/copy";
-import { activityText, roomNote, roomTitle } from "./discord/rooms";
+import { COPY, EMOTE_GLYPHS, PRESENCE_LABELS, fill } from "./discord/copy";
+import { activityText, doingText, roomNote, roomTitle, voiceText } from "./discord/rooms";
 import type { Member, RoomState } from "./discord/types";
 import { localized, t, type Locale, type MessageKey } from "./i18n";
 import {
+  CORRIDOR_ROOM,
   CORRIDOR_ROWS,
   DEFAULT_OFFICE_LAYOUT,
   FURNITURE_CATALOG,
@@ -649,9 +650,12 @@ export function OfficeWorld({
         const col = motion.from.col + (motion.point.col - motion.from.col) * motion.progress + 0.5 + actor.jitter;
         const row = motion.from.row + (motion.point.row - motion.from.row) * motion.progress + 0.5;
         const atSeat = !!seat && !motion.leaving && !motion.moving && samePoint(motion.point, seat);
-        // Someone chatting stands up at their place and types; everyone else at their place sits.
-        const chatting = atSeat && actor.chat !== null;
-        const seated = atSeat && !chatting;
+        // Someone chatting or typing stands up at their place and types; an emote is done standing too.
+        // Everyone else at their place sits.
+        const chatting = atSeat && (actor.chat !== null || !!actor.typing);
+        const emote = atSeat && !chatting && actor.emote ? actor.emote.kind : "";
+        // There are no chairs in the corridor; people there stand.
+        const seated = atSeat && !chatting && !emote && actor.room !== CORRIDOR_ROOM;
         const pose = chatting ? 1.12 : seated ? (crowded ? 0.58 : 0.72) : 1;
         const scale = pose * agentScale;
         /*
@@ -673,10 +677,12 @@ export function OfficeWorld({
           el.style.setProperty("--seat-asset", `url("${seatAsset(seat.facing)}")`);
         }
 
-        attr(el, "data-direction", motion.direction);
+        // An emote is done facing the viewer, or half the seats would show it from behind.
+        attr(el, "data-direction", emote ? "down" : motion.direction);
         attr(el, "data-moving", motion.moving ? "true" : "false");
         attr(el, "data-resting", seated ? "true" : "false");
         attr(el, "data-working", chatting ? "true" : "false");
+        attr(el, "data-emote", emote);
         attr(el, "data-edge-seat", seated && seat.row <= TOP_BAND_SEAT_ROW ? "true" : "false");
         attr(el, "data-popover-side", motion.point.col > OFFICE_COLS * 0.7 ? "left" : "right");
       }
@@ -1232,6 +1238,8 @@ export function OfficeWorld({
               const title = roomTitle(rooms[actor.room], actor.room, locale);
               const presence = localized(PRESENCE_LABELS[actor.presence], locale);
               const activity = activityText(actor, locale);
+              const doing = doingText(actor, locale);
+              const voice = voiceText(actor, locale);
               const selectedAgent = visibleSelectedAgentId === actor.id;
               const popoverId = `office-agent-${actor.id}`;
               return (
@@ -1246,9 +1254,25 @@ export function OfficeWorld({
                   style={{ "--agent-hue": actor.look ? "0deg" : `${actor.hue}deg` } as WorldStyle}
                   data-presence={actor.presence}
                 >
-                  <b className="world-agent-bubble" data-on={actor.chat ? "true" : "false"} data-tone="talk" aria-hidden="true">
-                    {actor.chat ? fill(COPY.activityChat, locale, { where: actor.chat }) : ""}
+                  <b
+                    className="world-agent-bubble"
+                    data-on={actor.chat || actor.typing ? "true" : "false"}
+                    data-tone={actor.chat ? "talk" : "think"}
+                    aria-hidden="true"
+                  >
+                    {actor.chat
+                      ? fill(COPY.activityChat, locale, { where: actor.chat })
+                      : actor.typing ? `${fill(COPY.activityTyping, locale, { where: actor.typing })}…` : ""}
                   </b>
+                  {/* Keyed by id so each new reaction or emote restarts the float-up animation, which also takes it out of view. */}
+                  {actor.reaction ? (
+                    <i className="world-agent-reaction" key={`r${actor.reaction.id}`} aria-hidden="true">
+                      {actor.reaction.image ? <img alt="" src={actor.reaction.image} /> : actor.reaction.text}
+                    </i>
+                  ) : null}
+                  {actor.emote ? (
+                    <i className="world-agent-reaction" key={`e${actor.emote.id}`} aria-hidden="true">{EMOTE_GLYPHS[actor.emote.kind]}</i>
+                  ) : null}
                   <button
                     type="button"
                     className="world-agent-select"
@@ -1269,11 +1293,11 @@ export function OfficeWorld({
                     <img alt="" className="world-agent-face" draggable={false} src={`/api/avatar/${actor.id}?v=${actor.avatar}`} />
                   ) : null}
                   <span className="world-agent-identity">
+                    {/* The plate is narrow: it carries the game or app's name alone; the roster and the popover say the rest. */}
+                    {actor.activity ? <small title={doing ?? undefined}>{actor.activity.name}</small> : null}
                     <strong>{actor.name}</strong>
                   </span>
-                  {actor.voice ? (
-                    <b className="world-agent-status">{fill(COPY.voiceBadge, locale, { where: actor.voice })}</b>
-                  ) : null}
+                  {voice ? <b className="world-agent-status">{fill(COPY.voiceBadge, locale, { where: voice })}</b> : null}
                   {selectedAgent ? (
                     <aside
                       className="world-agent-popover"

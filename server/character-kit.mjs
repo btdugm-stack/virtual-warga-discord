@@ -3,6 +3,8 @@
  * into one character. Every layer is a full 112×96 sheet in the layout the office already animates, so a
  * stacked character walks and types like the old ready-made ones.
  *
+ * Besides the parts there are a few ready-made characters, each one whole sheet (`WHOLES`).
+ *
  * `character-kit/manifest.json` lists what exists and how the layers stack; nothing about the kit's contents
  * is hard-coded here. A look is passed around in two forms: a `spec` naming each part by id (what is saved),
  * and a short `code` (what goes in URLs and Discord button ids). Codes are positions in the manifest, so they
@@ -32,6 +34,16 @@ export const PARTS = [
   { key: "hat", ids: idsOf("hat"), optional: true },
 ];
 export const ACCESSORIES = idsOf("accessories");
+/**
+ * Ready-made characters: whole sheets in `character-kit/whole/`, worn as they are instead of being assembled.
+ * Dropping a 112×96 sheet there (lower-case name, digits, underscores) adds one; the file name is its id.
+ */
+export const WHOLES = fs.readdirSync(`${KIT_DIR}whole`)
+  .filter((name) => /^[a-z0-9_]{1,40}\.png$/.test(name))
+  .map((name) => name.slice(0, -4))
+  .sort();
+/** A ready-made character's code is this letter and its id. Assembled looks start with the code version instead. */
+const WHOLE_PREFIX = "w";
 /** More than this and they pile up on a 16-pixel-wide figure. */
 export const ACCESSORIES_MAX = 3;
 
@@ -60,10 +72,14 @@ export function checkedSpec(input) {
   // Kept in manifest order, so the same set always gives the same code.
   spec.accessories = ACCESSORIES.filter((id) => input.accessories.includes(id));
   if (spec.accessories.length !== input.accessories.length || spec.accessories.length > ACCESSORIES_MAX) return null;
+  // A ready-made character worn over the parts. The parts are kept, so going back to "assembled" restores them.
+  spec.whole = input.whole ?? null;
+  if (spec.whole !== null && !WHOLES.includes(spec.whole)) return null;
   return spec;
 }
 
 export function codeOf(spec) {
+  if (spec.whole) return WHOLE_PREFIX + spec.whole;
   const parts = PARTS.map(({ key, ids }) => (spec[key] === null ? NONE : DIGITS[ids.indexOf(spec[key])]));
   const mask = spec.accessories.reduce((bits, id) => bits | (1 << ACCESSORIES.indexOf(id)), 0);
   return CODE_VERSION + parts.join("") + mask.toString(36).padStart(ACCESSORY_DIGITS, "0");
@@ -71,7 +87,13 @@ export function codeOf(spec) {
 
 /** The spec a code spells, or null when it is not a code this kit could have produced. */
 export function specOf(code) {
-  if (typeof code !== "string" || !CODE_PATTERN.test(code)) return null;
+  if (typeof code !== "string") return null;
+  if (code.startsWith(WHOLE_PREFIX)) {
+    const whole = code.slice(WHOLE_PREFIX.length);
+    // The code names only the ready-made character; the parts underneath are a fixed placeholder.
+    return WHOLES.includes(whole) ? { ...specFor(0), whole } : null;
+  }
+  if (!CODE_PATTERN.test(code)) return null;
   const spec = {};
   for (const [index, { key, ids, optional }] of PARTS.entries()) {
     const digit = code[index + 1];
@@ -87,7 +109,28 @@ export function specOf(code) {
   const mask = parseInt(code.slice(PARTS.length + 1), 36);
   if (mask >= 2 ** ACCESSORIES.length) return null;
   spec.accessories = ACCESSORIES.filter((_, index) => mask & (1 << index));
+  spec.whole = null;
   return spec.accessories.length > ACCESSORIES_MAX ? null : spec;
+}
+
+/**
+ * What the site's character builder needs to offer every part and to spell a look's code itself: each option
+ * with the digit it takes in the code, in code order. The page never has to know the alphabet behind them.
+ */
+export function kitDescription() {
+  return {
+    version: CODE_VERSION,
+    none: NONE,
+    parts: PARTS.map(({ key, ids, optional }) => ({
+      key,
+      optional: Boolean(optional),
+      options: ids.map((id, index) => ({ id, digit: DIGITS[index] })),
+    })),
+    accessories: ACCESSORIES.map((id, index) => ({ id, bit: 1 << index })),
+    accessoryDigits: ACCESSORY_DIGITS,
+    accessoriesMax: ACCESSORIES_MAX,
+    wholes: WHOLES.map((id) => ({ id, code: WHOLE_PREFIX + id })),
+  };
 }
 
 /** mulberry32: a small seeded generator, so the same seed always gives the same character. */
@@ -112,6 +155,7 @@ export function specFor(seed) {
   const accessories = new Set();
   while (accessories.size < wanted) accessories.add(pick(ACCESSORIES));
   spec.accessories = ACCESSORIES.filter((id) => accessories.has(id));
+  spec.whole = null;
   return spec;
 }
 
@@ -159,6 +203,7 @@ function pixelsOf(file) {
 
 /** The layers of a look painted over each other: RGBA, one full sheet. */
 function stacked(spec) {
+  if (spec.whole) return Buffer.from(pixelsOf(`whole/${spec.whole}.png`));
   const sheet = Buffer.alloc(SHEET.width * SHEET.height * 4);
   for (const file of layerFiles(spec)) {
     const layer = pixelsOf(file);

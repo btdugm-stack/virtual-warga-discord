@@ -613,8 +613,25 @@ const AMENITY_FACING = ["up", "left", "right", "up"] as const;
 const SEAT_COL_STEP = 3;
 const SEAT_ROW_STEP = 2;
 
+/** The room number the server gives someone who is active but fits no room: they stand in the corridor. */
+export const CORRIDOR_ROOM = ROOM_ZONES.length;
+/** Standing places along the corridor's two middle rows, far enough apart for nameplates. */
+const CORRIDOR_COL_STEP = 3;
+
+/** Where people wait in the corridor, the middle of the floor first so a few of them do not look scattered. */
+function corridorSpots(): OfficeSeat[] {
+  const spots: OfficeSeat[] = [];
+  for (const [lane, row] of [CORRIDOR_ROWS[1], CORRIDOR_ROWS[2]].entries()) {
+    for (let col = 3 + lane; col < OFFICE_COLS - 3; col += CORRIDOR_COL_STEP) spots.push({ col, row, facing: "down" });
+  }
+  const center = OFFICE_COLS / 2;
+  return spots.sort((a, b) => Math.abs(a.col - center) - Math.abs(b.col - center));
+}
+
 /**
- * Seats per room, in the order they fill. The hand-placed seats come first (they face a desk or a table);
+ * Seats per room, in the order they fill, followed by one more list: the standing places of the corridor
+ * (`CORRIDOR_ROOM`).
+ * The hand-placed seats come first (they face a desk or a table);
  * after those, open floor inside the room is used so a busy server is not limited to three chairs.
  * Extra seats skip protected walkways and anything the entrance cannot reach, so nobody is seated in an aisle
  * or behind furniture. Recomputed when furniture moves.
@@ -633,7 +650,7 @@ export function roomSeats(layout: OfficeLayout = DEFAULT_OFFICE_LAYOUT): readonl
       queue.push(next);
     }
   }
-  return ROOM_ZONES.map((zone, zoneIndex) => {
+  const rooms = ROOM_ZONES.map((zone, zoneIndex) => {
     const fixed: OfficeSeat[] = zoneIndex < WORKSPACE_ZONES.length
       ? WORKSPACE_SEATS[zone.id as WorkspaceId].map((seat) => ({ ...seat, facing: "up" }))
       : (zone as AmenityZone).seats.map((seat) => ({
@@ -658,6 +675,8 @@ export function roomSeats(layout: OfficeLayout = DEFAULT_OFFICE_LAYOUT): readonl
     extra.sort((a, b) => fromCenter(a) - fromCenter(b));
     return [...usable, ...extra];
   });
+  // The corridor is all protected tiles, so furniture can never be in the way there.
+  return [...rooms, corridorSpots()];
 }
 
 export function isOfficeWall(point: OfficePoint): boolean {

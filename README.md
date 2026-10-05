@@ -11,7 +11,19 @@ they write, and move to the AFK room when they go idle or offline. A side panel 
 Rasan-rasan") and who is where. Which server or channel each room shows is set in a password-protected
 settings panel.
 
-Message text is never read or shown: the bot does not request the Message Content intent.
+Smaller things are shown as they happen:
+
+| On Discord | In the office |
+|---|---|
+| Typing in a channel | A "Sedang mengetik di #channel…" bubble, and the character types |
+| Adding a reaction | The emoji floats up from the character |
+| Muted, deafened, streaming, or camera on in voice | A word after the voice channel's name: bisu, tuli, live, kamera |
+| Playing, listening, watching, streaming | The game or app's name on the nameplate, only for members who turned this on |
+| `/emote` | The character waves, dances, jumps, spins, or reads for eight seconds |
+
+Message text is never read or shown: the bot does not request the Message Content intent. Of a reaction only
+the emoji is kept, not the message it was on; of an activity only the name, not the song or stream title; a
+custom status is never shown.
 
 ## Run it locally
 
@@ -51,10 +63,12 @@ Each of the nine rooms shows one of:
 | AFK room | Idle and offline members of any server that is shown |
 | Empty | Nobody |
 
-A member appears in one room only, chosen in this order: their voice channel, the text channel they last
-wrote in, the AFK room, then their server. Offline members gather in the AFK room and are shown only when
-one exists; in a server above 2,000 members the offline list is not loaded. Until bindings are saved, rooms are filled automatically, one
-server per room. A room has 12 to 22 seats depending on its furniture; anyone beyond that is counted as
+A member appears in one place only, chosen in this order: their voice channel, the channel they last wrote
+in (a voice channel's own chat counts as that voice channel), the AFK room, then their server. A member who
+is online in a shown server but fits none of those stands in the corridor; with only channels bound, that is
+everyone who is online but not in one of them right now. Offline members gather in the AFK room and are
+shown only when one exists; in a server above 2,000 members the offline list is not loaded. Until bindings
+are saved, rooms are filled automatically, one server per room. A room has 12 to 22 seats depending on its furniture; anyone beyond that is counted as
 "+N" on the room label.
 
 ## Characters
@@ -70,7 +84,20 @@ A member changes their own with the `/karakter` command in Discord. It opens a p
 - a picture of the character from the front, the back, and the side;
 - a menu choosing which part to change, and a menu with that part's options;
 - buttons: **Pakai** applies, **Acak** draws a random character, **Bawaan** brings back the automatic one,
-  **Foto profil** wears or drops the profile picture, **Batal** closes the picker.
+  **Foto profil** wears or drops the profile picture, **Aktivitas** shows or hides what they are playing or
+  listening to (off until turned on), **Batal** closes the picker.
+
+The same choices can be made on the site, with every option as a picture to click: the **Karakter** button
+opens the builder. The site has to know which Discord member is building, and there are two ways to tell it:
+
+- **A personal link.** The `/karakter` picker has a **Rakit di situs** button. Its link signs that member in
+  once and is good for ten minutes. It leads to `PUBLIC_URL`, so set that to where visitors reach the site.
+- **Masuk dengan Discord.** Offered when `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` are set (Developer
+  Portal → your app → OAuth2) and `<PUBLIC_URL>/api/auth/discord/callback` is listed under Redirects there.
+  Only the `identify` scope is asked for, and only the account's id is used.
+
+Either way the session is a cookie that page scripts cannot read, it lasts twelve hours, and a server restart
+ends it. Someone who signs in but is not a member of a shown server has no character to build.
 
 Nothing changes in the office until **Pakai** is pressed. The **Karakter** button on the site explains the
 command and shows the kit's catalog. The command is registered in every server the bot is in when the server
@@ -82,6 +109,9 @@ How it is put together:
   three rows). `server/character-kit.mjs` stacks the parts in the order `character-kit/manifest.json` gives
   and serves the result at `/api/character/<code>.png`. Adding a part means adding its sheet and its
   manifest entry; nothing else names the parts.
+- A ready-made character is one whole sheet in `server/character-kit/whole/`, worn as it is. Both pickers
+  offer them under **Karakter jadi**. To add one, put a 112×96 PNG there (lower-case letters, digits, and
+  underscores in the name; the name is what the pickers show) and restart the server.
 - Choices are saved in `server/data/characters.json`, keyed by Discord user id and naming each part by id.
 - Profile pictures are fetched by the server and passed on under the member's public id, so the picture's
   real address (which contains the Discord id) never reaches a browser.
@@ -99,8 +129,9 @@ and serves the built site from `dist/`, so there is nothing else to deploy.
 - Room bindings, the furniture layout, and character choices are saved in `server/data/`. Keep that directory on persistent storage.
 - If a reverse proxy sits in front, it must not buffer `/api/events` (the live stream).
 - Everyone who opens the site sees the display names and activity of members in the shown servers. Tell
-  those servers' members before making it public. A profile picture is shown only for a member who turned
-  it on in the `/karakter` picker. Discord user ids are not sent to browsers.
+  those servers' members before making it public. A profile picture, and what a member is playing or
+  listening to, are shown only for a member who turned them on in the `/karakter` picker. Discord user ids
+  are not sent to browsers.
 
 ## What's inside
 
@@ -111,7 +142,8 @@ and serves the built site from `dist/`, so there is nothing else to deploy.
 | `server/discord-source.mjs`, `server/demo-source.mjs` | The gateway connection, and the invented data used without a token |
 | `server/config-store.mjs`, `server/layout-store.mjs`, `server/character-store.mjs` | Validation and storage of the room bindings, the furniture layout, and members' character choices |
 | `server/character-kit/`, `server/character-kit.mjs` | The layered character art, and the code that stacks it into sprite sheets and previews |
-| `server/karakter-command.mjs` | The `/karakter` command and its picker |
+| `server/karakter-command.mjs`, `server/emote-command.mjs` | The `/karakter` command and its picker, and the `/emote` command |
+| `server/member-sessions.mjs` | Signing a member in on the site: personal links and Discord sign-in |
 | `src/discord/` | Snapshot types, the stream hook, and the Discord-related copy |
 | `src/App.tsx`, `src/SettingsPanel.tsx`, `src/CharacterGuide.tsx`, `src/app.css` | The shell: room strip, activity feed, roster, the settings dialog, and the character guide |
 | `src/game/office-world.ts` | The 72×30 world: rooms, walls, doors, seats, furniture, protected walkways |

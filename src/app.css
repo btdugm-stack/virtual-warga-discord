@@ -396,6 +396,11 @@
   width: 62px;
 }
 
+/* With a second line (what the member is playing or listening to), the plate needs room for a title. */
+.moonlab-shell .world-agent-identity:has(small) {
+  width: 86px;
+}
+
 .moonlab-shell .office-zone-heading strong,
 .moonlab-shell .office-zone-heading small {
   overflow: hidden;
@@ -594,6 +599,288 @@
   border: 1px solid var(--color-edge);
   border-radius: 8px;
   image-rendering: pixelated;
+}
+
+/*
+ * A reaction's emoji, or the glyph of an emote, floating up from the character's head. The animation ends
+ * transparent and stays there, so the element needs no timer to go away.
+ */
+.world-agent-reaction {
+  position: absolute;
+  z-index: 7;
+  bottom: calc(100% - 8px);
+  left: 50%;
+  font-size: 22px;
+  font-style: normal;
+  line-height: 1;
+  pointer-events: none;
+  scale: var(--label-counter, 1);
+  transform-origin: 50% 100%;
+  translate: -50% 0;
+  animation: reaction-float 4s ease-out forwards;
+}
+
+.world-agent-reaction img {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+
+@keyframes reaction-float {
+  0% { opacity: 0; transform: translateY(8px) scale(0.6); }
+  12% { opacity: 1; transform: translateY(0) scale(1); }
+  75% { opacity: 1; transform: translateY(-18px) scale(1); }
+  100% { opacity: 0; transform: translateY(-30px) scale(1); }
+}
+
+/*
+ * Emotes (/emote). The sheet's frames are 48px apart: three walking, two typing, two reading; its rows are
+ * front, back, and right side. The profile picture is put away meanwhile, since it cannot follow the moves.
+ */
+.world-agent:not([data-emote=""]) .world-agent-face {
+  display: none;
+}
+
+.world-agent[data-emote="lompat"] .world-agent-sprite {
+  animation: emote-jump 0.5s ease-in-out infinite;
+}
+
+.world-agent[data-emote="joget"] .world-agent-sprite {
+  animation:
+    world-agent-walk 0.42s steps(1, end) infinite,
+    emote-sway 0.6s ease-in-out infinite;
+}
+
+.world-agent[data-emote="lambai"] .world-agent-sprite {
+  animation: emote-wave 0.45s ease-in-out infinite;
+}
+
+.world-agent[data-emote="putar"] .world-agent-sprite {
+  animation: emote-spin 0.9s steps(1, end) infinite;
+}
+
+.world-agent[data-emote="baca"] .world-agent-sprite {
+  animation: emote-read 1.4s steps(1, end) infinite;
+}
+
+@keyframes emote-jump {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-18px); }
+}
+
+@keyframes emote-sway {
+  0%, 100% { transform: rotate(-9deg); }
+  50% { transform: rotate(9deg); }
+}
+
+@keyframes emote-wave {
+  0%, 100% { transform: rotate(0) translateY(0); }
+  50% { transform: rotate(8deg) translateY(-3px); }
+}
+
+/* Front, right, back, left. The left side is the right side mirrored. */
+@keyframes emote-spin {
+  0%, 24% { background-position-y: 0; scale: 1 1; }
+  25%, 49% { background-position-y: -192px; scale: 1 1; }
+  50%, 74% { background-position-y: -96px; scale: 1 1; }
+  75%, 100% { background-position-y: -192px; scale: -1 1; }
+}
+
+@keyframes emote-read {
+  0%, 49% { background-position-x: -240px; }
+  50%, 100% { background-position-x: -288px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The glyph still says what happened; it just appears and goes instead of floating, and the character holds still. */
+  .world-agent-reaction {
+    animation: reaction-show 4s steps(1, end) forwards;
+  }
+
+  .world-agent:not([data-emote=""]) .world-agent-sprite {
+    animation: none;
+  }
+}
+
+@keyframes reaction-show {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* The character builder: the result on the left, the parts to click on the right; stacked on a narrow screen. */
+.builder-dialog {
+  width: min(980px, calc(100vw - 24px));
+}
+
+.builder {
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.builder-side {
+  display: grid;
+  gap: 10px;
+}
+
+/* One sheet shown three times at 4×: the standing frame of the front, back, and side rows. */
+.builder-preview {
+  display: flex;
+  justify-content: center;
+  padding: 10px 6px 4px;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  background: var(--color-floor);
+}
+
+.builder-preview i {
+  width: 64px;
+  height: 128px;
+  background-repeat: no-repeat;
+  background-size: 448px 384px;
+  image-rendering: pixelated;
+}
+
+.builder-preview i[data-view="back"] {
+  background-position: 0 -128px;
+}
+
+.builder-preview i[data-view="side"] {
+  background-position: 0 -256px;
+}
+
+.builder-name {
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.builder-switches,
+.builder-actions,
+.builder-ways {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.builder-switches .work-action {
+  flex: 1 1 100%;
+}
+
+.builder-switches .work-action[aria-pressed="true"] {
+  border-color: var(--color-ink);
+  background: var(--color-surface);
+}
+
+.builder-actions .work-action {
+  flex: 1 1 auto;
+}
+
+.builder-ways {
+  margin-bottom: 10px;
+}
+
+.builder-ways a.work-action {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.builder .settings-notice {
+  margin-top: 0;
+}
+
+.builder-signout {
+  justify-self: start;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--color-muted);
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.builder-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.builder-tabs button {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  background: var(--color-panel);
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.builder-tabs button[aria-pressed="true"] {
+  border-color: var(--color-ink);
+  background: var(--color-amber);
+}
+
+.builder-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 6px;
+}
+
+.builder-option {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  padding: 6px 4px;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  cursor: pointer;
+}
+
+.builder-option:hover:not(:disabled) {
+  border-color: var(--color-edge);
+}
+
+.builder-option[aria-pressed="true"] {
+  border-color: var(--color-ink);
+  box-shadow: inset 0 0 0 2px var(--color-ink);
+}
+
+.builder-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* The character wearing that option, standing, at the size it has on the floor. */
+.builder-option i {
+  width: 48px;
+  height: 84px;
+  background-position: 0 -8px;
+  background-repeat: no-repeat;
+  background-size: 336px 288px;
+  image-rendering: pixelated;
+}
+
+@media (max-width: 720px) {
+  .builder {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .builder-tabs button {
+    min-height: 44px;
+  }
 }
 
 .office-zone[data-bound="false"] {

@@ -1,7 +1,7 @@
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { adminToken, storeAdminToken } from "./discord/admin";
-import { COPY } from "./discord/copy";
+import { COPY, fill } from "./discord/copy";
 import { SLOT_COUNT, SLOT_LABEL_MAX, type AdminConfig, type RoomKind, type Slot } from "./discord/types";
 import { ROOM_ZONES } from "./game/office-world";
 import { localized, type Locale, type LocalizedText } from "./i18n";
@@ -215,7 +215,10 @@ export function SettingsPanel({ locale, onClose }: { locale: Locale; onClose: ()
                           if (!channels.length) return null;
                           return (
                             <optgroup key={type} label={localized(type === "voice" ? COPY.channelVoice : COPY.channelText, locale)}>
-                              {channels.map(({ id, name }) => <option key={id} value={id}>{type === "text" ? `#${name}` : name}</option>)}
+                              {channels.map(({ id, name, viewable }) => {
+                                const shown = type === "text" ? `#${name}` : name;
+                                return <option key={id} value={id}>{viewable === false ? fill(COPY.channelBlocked, locale, { name: shown }) : shown}</option>;
+                              })}
                             </optgroup>
                           );
                         })}
