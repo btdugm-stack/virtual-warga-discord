@@ -20,6 +20,7 @@ Smaller things are shown as they happen:
 | Muted, deafened, streaming, or camera on in voice | A word after the voice channel's name: bisu, tuli, live, kamera |
 | Playing, listening, watching, streaming | The game or app's name on the nameplate, only for members who turned this on |
 | `/emote` | The character waves, dances, jumps, spins, or reads for eight seconds |
+| A MEE6 level | A number on the corner of the nameplate, and after the name in the roster |
 
 Message text is never read or shown: the bot does not request the Message Content intent. Of a reaction only
 the emoji is kept, not the message it was on; of an activity only the name, not the song or stream title; a
@@ -161,6 +162,9 @@ and serves the built site from `dist/`, so there is nothing else to deploy.
 - The furniture layout is one shared layout. Anyone can try the editor, but only a signed-in admin can save;
   a saved layout is stored in `server/data/layout.json` and shown to every visitor.
 - One admin password, no per-user accounts.
+- Member levels come from MEE6's public leaderboard page for each shown server, read every ten minutes. That
+  is not a documented API: it works only while the server's MEE6 leaderboard is public, and may stop without
+  notice, in which case levels are simply not shown. `MEE6_LEVELS=off` turns it off.
 
 ## Rights
 

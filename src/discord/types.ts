@@ -64,6 +64,8 @@ export type Member = {
   readonly reaction?: { readonly id: number; readonly text?: string; readonly image?: string } | null;
   /** A move their character is doing right now. `id` changes with each `/emote`. */
   readonly emote?: { readonly id: number; readonly kind: EmoteKind } | null;
+  /** Their level on the server's MEE6 leaderboard, when it could be read. */
+  readonly level?: number | null;
   /** What their Discord status says they are doing, if they chose to show it. Only the name of the game or app. */
   readonly activity?: { readonly kind: ActivityKind; readonly name: string } | null;
 };

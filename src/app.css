@@ -883,6 +883,36 @@
   }
 }
 
+/* The member's level, as a chip on the corner of the nameplate and after the name in the roster. */
+.world-agent-level {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  min-width: 18px;
+  padding: 1px 3px;
+  border: 2px solid var(--color-ink);
+  border-radius: 6px;
+  background: var(--color-amber);
+  color: var(--color-ink);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.roster-level {
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  background: var(--color-cream);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
 .office-zone[data-bound="false"] {
   filter: saturate(0.35);
 }

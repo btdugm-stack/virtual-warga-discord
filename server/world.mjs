@@ -62,6 +62,8 @@ export class World {
     /** @type {Map<string, {id: number, kind: string}>} */
     this.emotes = new Map();
     this.momentSeq = 0;
+    /** Each server's member levels, as last read from its leaderboard. @type {Map<string, Map<string, number>>} */
+    this.levels = new Map();
     this.feed = [];
     this.feedSeq = 0;
     /** Guilds some room is bound to. Activity elsewhere is tracked but never reaches the feed. */
@@ -149,6 +151,22 @@ export class World {
     if ((user.activity?.kind ?? "") === (next?.kind ?? "") && (user.activity?.name ?? "") === (next?.name ?? "")) return;
     user.activity = next;
     this.onChange();
+  }
+
+  /** Replace what is known of one server's levels (user id → level). */
+  setLevels(guildId, levels) {
+    this.levels.set(guildId, levels);
+    this.onChange();
+  }
+
+  /** A member's level: the highest among the shown servers they are in, or null when none of them has one. */
+  #levelOf(userId, user) {
+    let best = null;
+    for (const guildId of user.guilds) {
+      const level = this.relevant.has(guildId) ? this.levels.get(guildId)?.get(userId) : undefined;
+      if (level !== undefined && (best === null || level > best)) best = level;
+    }
+    return best;
   }
 
   /** A member of the server, whatever their status. Never changes the status of someone already known. */
@@ -336,6 +354,7 @@ export class World {
         reaction: reaction ?? null,
         emote: this.emotes.get(userId) ?? null,
         activity: sharesActivity && user.status !== "offline" ? user.activity ?? null : null,
+        level: this.#levelOf(userId, user),
         ...look,
         rank: voiceName ? 0 : chatName ? 1 : STATUS_RANK[user.status] ?? 5,
       });

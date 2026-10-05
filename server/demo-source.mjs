@@ -45,6 +45,10 @@ export function startDemo(world) {
       world.setActivity(person.id, pick(ACTIVITIES));
     }
   }
+  // Invented levels too, so the level badge can be seen without MEE6.
+  for (const guild of GUILDS) {
+    world.setLevels(guild.id, new Map(people.filter((person) => person.guild === guild).map((person) => [person.id, Math.floor(Math.random() ** 2 * 60)])));
+  }
   world.setStatus("ready");
 
   const channelsOf = (guild, type) => [...world.guilds.get(guild.id).channels.values()].filter((channel) => channel.type === type);

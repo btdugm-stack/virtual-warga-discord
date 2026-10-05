@@ -1276,7 +1276,8 @@ export function OfficeWorld({
                   <button
                     type="button"
                     className="world-agent-select"
-                    aria-label={fill(COPY.agentSummary, locale, { name: actor.name, presence, room: title, activity })}
+                    aria-label={fill(COPY.agentSummary, locale, { name: actor.name, presence, room: title, activity })
+                      + (typeof actor.level === "number" ? `, ${fill(COPY.levelBadge, locale, { level: actor.level })}` : "")}
                     aria-expanded={selectedAgent}
                     aria-controls={selectedAgent ? popoverId : undefined}
                     onClick={(event) => {
@@ -1293,6 +1294,7 @@ export function OfficeWorld({
                     <img alt="" className="world-agent-face" draggable={false} src={`/api/avatar/${actor.id}?v=${actor.avatar}`} />
                   ) : null}
                   <span className="world-agent-identity">
+                    {typeof actor.level === "number" ? <em className="world-agent-level">{actor.level}</em> : null}
                     {/* The plate is narrow: it carries the game or app's name alone; the roster and the popover say the rest. */}
                     {actor.activity ? <small title={doing ?? undefined}>{actor.activity.name}</small> : null}
                     <strong>{actor.name}</strong>
@@ -1316,6 +1318,12 @@ export function OfficeWorld({
                           <dt>{localized(COPY.agentNow, locale)}</dt>
                           <dd>{activity}</dd>
                         </div>
+                        {typeof actor.level === "number" ? (
+                          <div>
+                            <dt>{localized(COPY.agentLevel, locale)}</dt>
+                            <dd>{actor.level}</dd>
+                          </div>
+                        ) : null}
                       </dl>
                       <button type="button" onClick={() => setSelectedAgentId(null)} aria-label={t(locale, "office.agentClose")}>×</button>
                     </aside>

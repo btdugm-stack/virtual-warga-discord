@@ -15,6 +15,7 @@ import { CharacterStore } from "./character-store.mjs";
 import { ConfigStore, checkedSlots } from "./config-store.mjs";
 import { startDemo } from "./demo-source.mjs";
 import { LayoutStore, checkedLayout } from "./layout-store.mjs";
+import { startLevels } from "./levels-source.mjs";
 import { MemberSessions } from "./member-sessions.mjs";
 import { World } from "./world.mjs";
 
@@ -471,6 +472,7 @@ const server = http.createServer((req, res) => {
 if (TOKEN) {
   const { startDiscord } = await import("./discord-source.mjs");
   ({ avatarUrl } = startDiscord(world, TOKEN, characters, (userId) => members.ticketUrl(userId)));
+  if (process.env.MEE6_LEVELS?.trim().toLowerCase() !== "off") startLevels(world);
 } else {
   console.warn("[server] DISCORD_TOKEN belum diisi — berjalan dalam mode demo dengan data karangan.");
   startDemo(world);

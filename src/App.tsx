@@ -276,7 +276,10 @@ export function App() {
                     {here.map((member) => (
                       <li data-presence={member.presence} key={member.id}>
                         <i aria-hidden="true" />
-                        <strong>{member.name}</strong>
+                        <strong>
+                          {member.name}
+                          {typeof member.level === "number" ? <em className="roster-level">{fill(COPY.levelBadge, locale, { level: member.level })}</em> : null}
+                        </strong>
                         <span>
                           <span className="visually-hidden">{localized(PRESENCE_LABELS[member.presence], locale)} · </span>
                           {activityText(member, locale)}

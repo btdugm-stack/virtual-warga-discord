@@ -82,6 +82,8 @@ export const COPY = {
 
   agentRoom: both("Ruang", "Room"),
   agentNow: both("Sekarang", "Now"),
+  agentLevel: both("Level", "Level"),
+  levelBadge: both("Lv {level}", "Lv {level}"),
   agentSummary: both("{name}, {presence}, {room}, {activity}", "{name}, {presence}, {room}, {activity}"),
   activityChat: both("Sedang Gibah di #{where}", "Chatting in #{where}"),
   activityVoice: both("Di voice {where}", "In voice {where}"),
