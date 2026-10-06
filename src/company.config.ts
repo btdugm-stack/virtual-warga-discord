@@ -13,7 +13,7 @@ export const COMPANY = {
     en: "Warga Discord · live Discord activity office",
     zh: "Warga Discord · Discord 动态办公室",
     vi: "Warga Discord · văn phòng hoạt động Discord",
-    id: "Warga Discord · kantor aktivitas Discord",
+    id: "Warga Discord . live activity",
   },
   description: {
     ko: "디스코드 서버와 채널이 방이 되고, 멤버의 접속·음성·채팅 활동이 그대로 보이는 픽셀 오피스",
