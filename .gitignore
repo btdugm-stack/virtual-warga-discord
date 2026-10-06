@@ -2,8 +2,8 @@ node_modules/
 dist/
 *.local
 .gstack/
-agents
-workflows
+/agents
+/workflows
 .env
 server/data/
 # The same sheets as server/character-kit/, which is the copy the server reads.
