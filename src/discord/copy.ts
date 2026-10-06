@@ -67,6 +67,8 @@ export const COPY = {
   roomCount: both("{count} warga", "{count} members"),
   roomOverflow: both("+{count} lagi", "+{count} more"),
 
+  dockHide: both("Sembunyikan panel", "Hide panel"),
+  dockShow: both("Tampilkan panel", "Show panel"),
   tabOffice: both("Kantor", "Office"),
   tabFeed: both("Rasan-rasan", "Activity"),
   tabRoster: both("Warga", "Members"),

@@ -1066,6 +1066,26 @@
   color: var(--color-red);
 }
 
+/*
+ * The side panel can be folded away so the office has the whole width. Only on a wide window: below
+ * 1180px the office and the panel are already shown one at a time, through the tabs.
+ */
+@media (min-width: 1181px) {
+  .moonlab-shell .workspace-layout[data-dock="hidden"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspace-layout[data-dock="hidden"] > .work-dock {
+    display: none;
+  }
+}
+
+@media (max-width: 1180px) {
+  .app-dock-toggle {
+    display: none;
+  }
+}
+
 /* Widescreen: more room for the shared dock and the strip, and a calmer outer margin. */
 @media (min-width: 1500px) {
   .moonlab-shell.app-shell {
@@ -1082,10 +1102,10 @@
 }
 
 /*
- * globals.css hides the office pane at the tablet breakpoint and below for a tab switcher. This is that
- * switcher: office, feed, and roster are shown one at a time.
+ * globals.css hides the office pane at 1180px and below for a tab switcher. This is that switcher:
+ * office, feed, and roster are shown one at a time.
  */
-@media (max-width: 1000px) {
+@media (max-width: 1180px) {
   .pane-tabs {
     display: flex;
     flex: 0 0 auto;

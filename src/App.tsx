@@ -86,6 +86,17 @@ function initialLocale(): Locale {
   }
 }
 
+/** Whether the visitor folded the side panel away, so the office keeps the whole width on their next visit too. */
+const DOCK_STORAGE_KEY = "warga.dock";
+
+function initialDockHidden(): boolean {
+  try {
+    return window.localStorage.getItem(DOCK_STORAGE_KEY) === "hidden";
+  } catch {
+    return false;
+  }
+}
+
 function rememberLocale(locale: Locale) {
   try {
     window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
@@ -138,6 +149,19 @@ export function App() {
   // The furniture editor takes over the side dock while it is open, so it never covers the floor it edits.
   const [editorHost, setEditorHost] = useState<HTMLDivElement | null>(null);
   const [editing, setEditing] = useState(false);
+  const [dockHidden, setDockHidden] = useState(initialDockHidden);
+  // The furniture editor lives in the dock, so the dock comes back for as long as the editor is open.
+  const dockShown = !dockHidden || editing;
+
+  function toggleDock() {
+    const hidden = !dockHidden;
+    setDockHidden(hidden);
+    try {
+      window.localStorage.setItem(DOCK_STORAGE_KEY, hidden ? "hidden" : "shown");
+    } catch {
+      // It still applies for this visit.
+    }
+  }
   const now = useNow();
 
   useEffect(() => {
@@ -179,6 +203,16 @@ export function App() {
             ))}
           </select>
         </label>
+        <button
+          aria-controls="work-dock"
+          aria-expanded={dockShown}
+          className="work-action app-settings app-dock-toggle"
+          disabled={editing}
+          onClick={toggleDock}
+          type="button"
+        >
+          {localized(dockShown ? COPY.dockHide : COPY.dockShow, locale)}
+        </button>
         <button className="work-action app-settings" onClick={() => setGuideOpen(true)} type="button">
           {localized(COPY.guideOpen, locale)}
         </button>
@@ -222,7 +256,7 @@ export function App() {
         ))}
       </div>
 
-      <div className="workspace-layout" data-editing={editing ? "true" : "false"} data-pane={pane}>
+      <div className="workspace-layout" data-dock={dockShown ? "shown" : "hidden"} data-editing={editing ? "true" : "false"} data-pane={pane}>
         <section className="office-panel">
           <OfficeWorld
             activeRoom={activeRoom}
@@ -237,7 +271,7 @@ export function App() {
           />
         </section>
 
-        <aside className="work-dock" data-editing={editing ? "true" : "false"}>
+        <aside className="work-dock" data-editing={editing ? "true" : "false"} id="work-dock">
           <div className="editor-host" ref={setEditorHost} />
           <section className="feed-panel" aria-labelledby="feed-title">
             <h2 id="feed-title">{localized(COPY.feedTitle, locale)}</h2>

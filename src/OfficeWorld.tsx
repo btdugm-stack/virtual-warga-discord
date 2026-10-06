@@ -1288,7 +1288,13 @@ export function OfficeWorld({
                   <span
                     className="world-agent-sprite"
                     aria-hidden="true"
-                    style={actor.look ? { backgroundImage: `url("/api/character/${actor.look}.png")` } : undefined}
+                    style={actor.look
+                      ? {
+                        backgroundImage: `url("/api/character/${actor.look}.png")`,
+                        // A sheet finer than the office's grid is shrunk to fit, so pixelating it would throw the detail away.
+                        ...(actor.smooth ? { imageRendering: "auto" as const } : {}),
+                      }
+                      : undefined}
                   />
                   {actor.avatar ? (
                     <img alt="" className="world-agent-face" draggable={false} src={`/api/avatar/${actor.id}?v=${actor.avatar}`} />
