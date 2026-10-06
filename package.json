@@ -8,6 +8,7 @@
     "dev": "vite",
     "server": "node --env-file-if-exists=.env server/index.mjs",
     "build": "tsc --noEmit && vite build",
+    "test": "node --test \"server/tests/*.test.mjs\"",
     "start": "node --env-file-if-exists=.env server/index.mjs",
     "preview": "vite preview"
   },

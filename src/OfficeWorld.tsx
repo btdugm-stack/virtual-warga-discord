@@ -656,7 +656,7 @@ export function OfficeWorld({
         const emote = atSeat && !chatting && actor.emote ? actor.emote.kind : "";
         // There are no chairs in the corridor; people there stand.
         const seated = atSeat && !chatting && !emote && actor.room !== CORRIDOR_ROOM;
-        const pose = chatting ? 1.12 : seated ? (crowded ? 0.58 : 0.72) : 1;
+        const pose = chatting ? 1.12 : seated ? (crowded ? 0.8 : 0.9) : 1;
         const scale = pose * agentScale;
         /*
          * With transform-origin at center bottom, scaling does not change the foot coordinates.

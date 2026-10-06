@@ -73,6 +73,21 @@ function publicId(userId) {
   return id;
 }
 
+/**
+ * Drop the ids of members the world no longer knows. Offline members stay in `world.users`, so only members
+ * who actually left are freed; nothing the browser can still ask for is lost. Runs after every snapshot, which
+ * is also when new ids are minted, so the maps never grow past the members seen since the last prune.
+ */
+function pruneIds() {
+  const known = world.users;
+  for (const [id, userId] of userIds) {
+    if (!known.has(userId)) {
+      userIds.delete(id);
+      publicIds.delete(userId);
+    }
+  }
+}
+
 const streams = new Set();
 let pushTimer = null;
 let lastPayload = "";
@@ -135,7 +150,9 @@ function avatarImage(url) {
 function payload() {
   const slots = config.slots(world);
   world.setRelevant(slots);
-  return JSON.stringify({ ...world.snapshot(slots, publicId, profileOf), layoutRev: layouts.rev });
+  const result = JSON.stringify({ ...world.snapshot(slots, publicId, profileOf), layoutRev: layouts.rev });
+  pruneIds();
+  return result;
 }
 
 function push() {
