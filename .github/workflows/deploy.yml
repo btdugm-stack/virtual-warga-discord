@@ -1,0 +1,30 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - production
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Pull latest code
+        working-directory: /var/www/discord-hq
+        run: git pull origin main
+
+      - name: Install dependencies
+        working-directory: /var/www/discord-hq
+        run: npm install
+
+      - name: Build
+        working-directory: /var/www/discord-hq
+        run: npm run build
+
+      - name: Restart PM2 process
+        working-directory: /var/www/discord-hq
+        run: pm2 restart discord-hq-backend
