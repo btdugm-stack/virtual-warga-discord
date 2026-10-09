@@ -416,11 +416,9 @@
 
 /*
  * Labels are scaled up to stay readable on a small floor. The close-up camera magnifies them again,
- * so take that back: a room full of chat bubbles would otherwise cover the people.
+ * so take that back: a room full of name plates would otherwise cover the people.
  */
-.office-world-stage[data-camera-view="close"] .world-agent-identity,
-.office-world-stage[data-camera-view="close"] .world-agent-status,
-.office-world-stage[data-camera-view="close"] .world-agent-bubble[data-on="true"] {
+.office-world-stage[data-camera-view="close"] .world-agent-identity {
   scale: calc(var(--label-counter, 1) * 0.62);
 }
 
@@ -442,12 +440,12 @@
   scroll-padding-block: 64px 96px;
 }
 
-/* The lobby strip is decoration. While editing, its height goes to the floor, where the tiles need to be big enough to aim at. */
+/* The pulse strip is decoration. While editing, its height goes to the floor, where the tiles need to be big enough to aim at. */
 .office-world.editor-open .office-world-body {
-  --lobby-h: 0px;
+  --pulse-h: 0px;
 }
 
-.office-world.editor-open .office-lobby {
+.office-world.editor-open .office-pulse {
   display: none;
 }
 
@@ -1200,8 +1198,7 @@
    * 72 tiles across a phone screen leaves about 5px per tile, too small to read a room label.
    * Keep the floor at a legible size and let the office body scroll sideways instead.
    */
-  .moonlab-shell .office-world-stage,
-  .moonlab-shell .office-lobby {
+  .moonlab-shell .office-world-stage {
     flex-shrink: 0;
     width: 680px;
     max-width: none;

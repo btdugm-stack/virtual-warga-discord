@@ -19,6 +19,7 @@ import {
   OFFICE_THEMES,
   ROOM_ZONES,
   WORKSPACE_ZONES,
+  ZONE_TAG_COLORS,
   canPlaceFurniture,
   checkedOfficeLayout,
   ELEVATOR_SHAFT,
@@ -81,7 +82,6 @@ type AgentMotion = {
   stroll: OfficePoint | null;
 };
 type SeatRef = { room: number; index: number };
-type CameraView = "full" | "close";
 type LayoutHistory = { past: OfficeLayout[]; present: OfficeLayout; future: OfficeLayout[] };
 
 const HUES = [
@@ -125,6 +125,13 @@ const ARRIVAL_STAGGER_MS = 420;
 const ARRIVAL_BATCH_MS = 8000;
 /** The camera eases toward its target. Larger values catch up faster. */
 const CAMERA_EASE = 0.11;
+/** The opening view is zoomed in rather than showing the whole floor. */
+const DEFAULT_ZOOM = 1.65;
+/** At 1 the whole floor fits the frame; farther out would only expose the empty stage. */
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 3;
+/** Wheel delta to zoom factor. Small, so one notch is a gentle step. */
+const ZOOM_WHEEL_RATE = 0.0015;
 /**
  * Sprites are fixed at 48×96, while tiles can shrink to about 15px with the stage.
  * Unscaled, one person occupies 3×7 tiles and exceeds the furniture, so lock height to a tile count.
@@ -138,8 +145,6 @@ const LABEL_LEGIBLE_SCALE = 0.58;
  * (`.world-agent[data-edge-seat]`). The lower band has a corridor above it, so nothing can overflow there.
  */
 const TOP_BAND_SEAT_ROW = 5;
-/** Above this many people, seated characters are drawn smaller so the rooms stay readable. */
-const CROWDED_FROM = 16;
 /** While nobody is talking, about this share of the people with nothing to do wander the corridor. */
 const STROLL_SHARE = 0.25;
 const STROLL_MAX = 6;
@@ -289,7 +294,9 @@ export function OfficeWorld({
   const ghostTile = useRef<OfficePoint | null>(null);
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
-  const [cameraView, setCameraView] = useState<CameraView>("full");
+  const [zoom, setZoom] = useState(DEFAULT_ZOOM);
+  // Wheel and pinch fire several times per frame; the live zoom lives in a ref so a burst is not lost to batching.
+  const zoomRef = useRef(zoom);
   // Whether the camera follows the selected room. Turn it off to keep one spot in view.
   const [follow, setFollow] = useState(true);
   const [cameraPan, setCameraPan] = useState<{ x: number; y: number; room: number | null }>({
@@ -308,6 +315,9 @@ export function OfficeWorld({
   // Camera motion is read every frame, so the state must also be kept in a ref.
   const panOffset = useRef({ x: 0, y: 0 });
   const panStart = useRef<{ pointerId: number; x: number; y: number; panX: number; panY: number } | null>(null);
+  // Fingers currently on the stage, keyed by pointer id. Two of them mean a pinch, not a pan.
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const pinchGap = useRef(0);
   const layout = history.present;
   const layoutRef = useRef(layout);
   const pathLayoutKey = navigationKey(layout);
@@ -316,14 +326,14 @@ export function OfficeWorld({
 
   const selected = layout.furniture.find(({ uid }) => uid === selectedUid) ?? null;
   const theme = OFFICE_THEMES[layout.theme];
-  const crowded = actors.length > CROWDED_FROM;
   const voiceCount = members.filter(({ voice }) => voice !== null).length;
   const chatCount = members.filter(({ chat }) => chat !== null).length;
   // Someone is in voice or chatting somewhere: screens light up and the floor gets its light sweep.
   const lively = rooms.some(({ live }) => live);
   const activeZone = activeRoom === null ? undefined : ROOM_ZONES[activeRoom];
-  const cameraClose = cameraView === "close" && !editorOpen;
-  const cameraScale = cameraClose ? 1.65 : 1;
+  const zoomedIn = zoom > MIN_ZOOM;
+  const cameraClose = zoomedIn && !editorOpen;
+  const cameraScale = cameraClose ? zoom : 1;
   /*
    * Drag room comes from scale, not view mode. At 1×, the entire floor already fits in the frame,
    * leaving nowhere to drag. If zoom increases later, this condition alone enables dragging with it.
@@ -365,6 +375,20 @@ export function OfficeWorld({
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
+
+  // React listens to wheel passively, so a native listener is needed to stop the page scrolling while zooming.
+  useEffect(() => {
+    const node = stageEl.current;
+    if (!node) return;
+    const onWheel = (event: WheelEvent) => {
+      if (editorOpen) return;
+      event.preventDefault();
+      const rect = node.getBoundingClientRect();
+      zoomAt(Math.exp(-event.deltaY * ZOOM_WHEEL_RATE), event.clientX - rect.left, event.clientY - rect.top);
+    };
+    node.addEventListener("wheel", onWheel, { passive: false });
+    return () => node.removeEventListener("wheel", onWheel);
+  }, [editorOpen, activeRoom, cameraPan, visibleCameraPan.x, visibleCameraPan.y]);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -632,8 +656,11 @@ export function OfficeWorld({
         const offsetX = clamp((0.5 - view.x) * view.scale * width + panOffset.current.x, limitX);
         const offsetY = clamp((0.5 - view.y) * view.scale * height + panOffset.current.y, limitY);
         camNode.style.transform = `translate3d(${offsetX}px, ${offsetY}px, 0) scale(${view.scale})`;
-        // Nameplates and speech bubbles become unreadable if they shrink with people. Counteract the shrinkage.
-        camNode.style.setProperty("--label-counter", (1 / agentScale).toFixed(3));
+        // Text stops growing once the view is zoomed past its default. Room labels use only this factor;
+        // people's labels also divide out agentScale, since their bodies shrink to fit the tiles.
+        const zoomCounter = 1 / Math.max(1, view.scale / DEFAULT_ZOOM);
+        camNode.style.setProperty("--zoom-counter", zoomCounter.toFixed(3));
+        camNode.style.setProperty("--label-counter", (zoomCounter / agentScale).toFixed(3));
         // This must be a data attribute, not a class — React overwrites the entire className when rerendering.
         attr(camNode, "data-compact", agentScale * view.scale < LABEL_LEGIBLE_SCALE ? "true" : "false");
       }
@@ -656,7 +683,8 @@ export function OfficeWorld({
         const emote = atSeat && !chatting && actor.emote ? actor.emote.kind : "";
         // There are no chairs in the corridor; people there stand.
         const seated = atSeat && !chatting && !emote && actor.room !== CORRIDOR_ROOM;
-        const pose = chatting ? 1.12 : seated ? (crowded ? 0.58 : 0.72) : 1;
+        // Sitting must not shrink the body: a seated person is as tall as one walking.
+        const pose = chatting ? 1.12 : 1;
         const scale = pose * agentScale;
         /*
          * With transform-origin at center bottom, scaling does not change the foot coordinates.
@@ -699,7 +727,7 @@ export function OfficeWorld({
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [crowded, layout, pathLayoutKey, ready, reducedMotion, seats]);
+  }, [layout, pathLayoutKey, ready, reducedMotion, seats]);
 
   function markChanged() {
     editRevision.current += 1;
@@ -820,8 +848,56 @@ export function OfficeWorld({
     placeFurniture(placingType, eventPoint(event.currentTarget, event.clientX, event.clientY));
   }
 
+  /** The gap and midpoint between the two fingers on the stage, in client pixels, or null for fewer than two. */
+  function pointerGesture() {
+    const [a, b] = [...pointers.current.values()];
+    if (!a || !b) return null;
+    return { gap: Math.hypot(a.x - b.x, a.y - b.y), midX: (a.x + b.x) / 2, midY: (a.y + b.y) / 2 };
+  }
+
+  /** Jump to a fixed zoom level, keeping the ref and state in step. */
+  function setZoomLevel(next: number) {
+    zoomRef.current = next;
+    setZoom(next);
+  }
+
+  /** Zoom about a point measured from the stage's top-left — where a wheel or pinch gesture is anchored. */
+  function zoomAt(factor: number, stageX: number, stageY: number) {
+    const current = zoomRef.current;
+    const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, current * factor));
+    if (next === current) return;
+    // The map scales about the middle of the stage, so the whole screen offset shifts by the scale
+    // change times how far the anchor sits from that middle. Clamping it here is the same limit paint()
+    // applies, so the map edge can never leave the frame or drift out of range.
+    const { width, height } = stageSize.current;
+    const centerX = camTarget.current.x;
+    const centerY = camTarget.current.y;
+    const delta = current - next;
+    const limitX = Math.max(0, ((next - 1) / 2) * width);
+    const limitY = Math.max(0, ((next - 1) / 2) * height);
+    const offsetX = clamp((0.5 - centerX) * current * width + panOffset.current.x + delta * (stageX - width / 2), limitX);
+    const offsetY = clamp((0.5 - centerY) * current * height + panOffset.current.y + delta * (stageY - height / 2), limitY);
+    const pan = {
+      x: offsetX - (0.5 - centerX) * next * width,
+      y: offsetY - (0.5 - centerY) * next * height,
+      room: activeRoom,
+    };
+    panOffset.current = { x: pan.x, y: pan.y };
+    zoomRef.current = next;
+    setCameraPan(pan);
+    setZoom(next);
+  }
+
   function handleCameraPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
-    if (!canPan || event.button !== 0 || (event.target as Element).closest("button")) return;
+    if (editorOpen || event.button !== 0 || (event.target as Element).closest("button")) return;
+    pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    // A second finger turns the drag into a pinch, abandoning the pan the first finger started.
+    if (pointers.current.size > 1) {
+      panStart.current = null;
+      pinchGap.current = pointerGesture()?.gap ?? 0;
+      return;
+    }
+    if (!canPan) return;
     panStart.current = {
       pointerId: event.pointerId,
       x: event.clientX,
@@ -834,6 +910,18 @@ export function OfficeWorld({
 
   function handleCameraPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
     previewPlacement(event);
+    if (pointers.current.has(event.pointerId)) {
+      pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+    const pinch = pointerGesture();
+    if (pinch) {
+      if (pinchGap.current > 0) {
+        const rect = event.currentTarget.getBoundingClientRect();
+        zoomAt(pinch.gap / pinchGap.current, pinch.midX - rect.left, pinch.midY - rect.top);
+      }
+      pinchGap.current = pinch.gap;
+      return;
+    }
     const start = panStart.current;
     if (!start || start.pointerId !== event.pointerId) return;
     // Accumulating values that never reach the screen creates a dead segment when direction reverses.
@@ -850,6 +938,8 @@ export function OfficeWorld({
   }
 
   function finishCameraPan(event: ReactPointerEvent<HTMLDivElement>) {
+    pointers.current.delete(event.pointerId);
+    if (pointers.current.size < 2) pinchGap.current = 0;
     if (panStart.current?.pointerId !== event.pointerId) return;
     panStart.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
@@ -1082,9 +1172,22 @@ export function OfficeWorld({
       </aside>
     ) : null;
 
+  /*
+   * Room labels are drawn in their own layer above the floor, so furniture and walking people never cover
+   * them, and so they can sit mostly outside the room they name.
+   */
+  const zoneLabels = ROOM_ZONES.map((zone, index) => {
+    const room = rooms[index];
+    const title = roomTitle(room, index, locale);
+    // People the server left out plus people this room has no chair for.
+    const hidden = (room?.overflow ?? 0) + (unseated[index] ?? 0);
+    const note = `${roomNote(room, locale)}${hidden ? ` · ${fill(COPY.roomOverflow, locale, { count: hidden })}` : ""}`;
+    return { zone, room, title, note };
+  });
+
   return (
     <section
-      className={`office-world theme-${layout.theme} camera-${cameraView}${lively ? " workflow-running" : ""}${ready ? " office-ready" : ""}${editorOpen ? " editor-open" : ""}${crowded ? " office-crowded" : ""}`}
+      className={`office-world theme-${layout.theme}${lively ? " workflow-running" : ""}${ready ? " office-ready" : ""}${editorOpen ? " editor-open" : ""}`}
       style={rootStyle}
       aria-labelledby="office-world-title"
     >
@@ -1112,7 +1215,7 @@ export function OfficeWorld({
                 setEditorOpen((open) => !open);
                 setPlacingType(null);
                 setSelectedAgentId(null);
-                setCameraView("full");
+                setZoomLevel(MIN_ZOOM);
                 setCameraPan({ x: 0, y: 0, room: activeRoom });
               }}
             >
@@ -1151,40 +1254,26 @@ export function OfficeWorld({
             style={rectStyle(ELEVATOR_SHAFT.col, ELEVATOR_SHAFT.row, ELEVATOR_SHAFT.cols, ELEVATOR_SHAFT.rows)}
           />
           <div className="office-zone-layer">
-            {ROOM_ZONES.map((zone, index) => {
-              const room = rooms[index];
-              const title = roomTitle(room, index, locale);
-              // People the server left out plus people this room has no chair for.
-              const hidden = (room?.overflow ?? 0) + (unseated[index] ?? 0);
-              const note = `${roomNote(room, locale)}${hidden ? ` · ${fill(COPY.roomOverflow, locale, { count: hidden })}` : ""}`;
-              return (
-                <article
-                  className={`office-zone ${index >= WORKSPACE_ZONES.length ? "amenity-zone " : ""}zone-${zone.id}`}
-                  key={zone.id}
-                  style={{ ...rectStyle(zone.col, zone.row, zone.cols, zone.rows), "--zone-accent": zone.accent } as WorldStyle}
-                  aria-label={`${title}${room?.subtitle ? `, ${room.subtitle}` : ""}, ${note}`}
-                  aria-current={activeRoom === index ? "step" : undefined}
-                  data-zone-status={room?.live ? "running" : "idle"}
-                  data-bound={room && room.kind !== "none" && !room.missing ? "true" : "false"}
-                >
-                  <div className="office-zone-heading">
-                    <span>{zone.code}</span>
-                    <div>
-                      <strong>{title}</strong>
-                      <small>{note}</small>
-                    </div>
-                  </div>
-                  <i
-                    className={`office-zone-door door-${doorDirection(zone)}`}
-                    style={{
-                      "--door-x": `${Math.max(0, Math.min(100, ((zone.door.col - zone.col) / zone.cols) * 100))}%`,
-                      "--door-y": `${Math.max(0, Math.min(100, ((zone.door.row - zone.row) / zone.rows) * 100))}%`,
-                    } as WorldStyle}
-                    aria-hidden="true"
-                  />
-                </article>
-              );
-            })}
+            {zoneLabels.map(({ zone, room, title, note }, index) => (
+              <article
+                className={`office-zone ${index >= WORKSPACE_ZONES.length ? "amenity-zone " : ""}zone-${zone.id}`}
+                key={zone.id}
+                style={{ ...rectStyle(zone.col, zone.row, zone.cols, zone.rows), "--zone-accent": zone.accent } as WorldStyle}
+                aria-label={`${title}${room?.subtitle ? `, ${room.subtitle}` : ""}, ${note}`}
+                aria-current={activeRoom === index ? "step" : undefined}
+                data-zone-status={room?.live ? "running" : "idle"}
+                data-bound={room && room.kind !== "none" && !room.missing ? "true" : "false"}
+              >
+                <i
+                  className={`office-zone-door door-${doorDirection(zone)}`}
+                  style={{
+                    "--door-x": `${Math.max(0, Math.min(100, ((zone.door.col - zone.col) / zone.cols) * 100))}%`,
+                    "--door-y": `${Math.max(0, Math.min(100, ((zone.door.row - zone.row) / zone.rows) * 100))}%`,
+                  } as WorldStyle}
+                  aria-hidden="true"
+                />
+              </article>
+            ))}
           </div>
 
           <div className="office-furniture-layer" aria-label={t(locale, "office.furnitureLayer")}>
@@ -1304,8 +1393,9 @@ export function OfficeWorld({
                     {/* The plate is narrow: it carries the game or app's name alone; the roster and the popover say the rest. */}
                     {actor.activity ? <small title={doing ?? undefined}>{actor.activity.name}</small> : null}
                     <strong>{actor.name}</strong>
+                    {/* Inside the plate, so the VC badge is shown and hidden with the name, never covered by a passer-by. */}
+                    {voice ? <b className="world-agent-status">{fill(COPY.voiceBadge, locale, { where: voice })}</b> : null}
                   </span>
-                  {voice ? <b className="world-agent-status">{fill(COPY.voiceBadge, locale, { where: voice })}</b> : null}
                   {selectedAgent ? (
                     <aside
                       className="world-agent-popover"
@@ -1338,6 +1428,24 @@ export function OfficeWorld({
               );
             })}
           </ul>
+
+          <div className="office-zone-label-layer" aria-hidden="true">
+            {zoneLabels.map(({ zone, title, note }) => (
+              <div
+                className="office-zone-label"
+                key={zone.id}
+                style={{ ...rectStyle(zone.col, zone.row, zone.cols, zone.rows), "--zone-tag": ZONE_TAG_COLORS[zone.id] } as WorldStyle}
+              >
+                <div className="office-zone-heading">
+                  <span>{zone.code}</span>
+                  <div>
+                    <strong>{title}</strong>
+                    <small>{note}</small>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
           </div>
           {/*
             * Full-screen staging removes the surrounding UI. Camera controls must overlay the stage to remain available in that mode.
@@ -1348,9 +1456,9 @@ export function OfficeWorld({
               <button
                 type="button"
                 className="office-camera-toggle"
-                aria-pressed={cameraView === "full"}
+                aria-pressed={!zoomedIn}
                 onClick={() => {
-                  setCameraView("full");
+                  setZoomLevel(MIN_ZOOM);
                   setCameraPan({ x: 0, y: 0, room: activeRoom });
                 }}
               >
@@ -1359,9 +1467,9 @@ export function OfficeWorld({
               <button
                 type="button"
                 className="office-camera-toggle"
-                aria-pressed={cameraView === "close"}
+                aria-pressed={zoomedIn}
                 onClick={() => {
-                  setCameraView("close");
+                  setZoomLevel(DEFAULT_ZOOM);
                   setCameraPan({ x: 0, y: 0, room: activeRoom });
                 }}
               >
@@ -1387,19 +1495,24 @@ export function OfficeWorld({
           {reducedMotion ? <p className="office-motion-note" role="status">{t(locale, "office.reducedMotion")}</p> : null}
         </div>
 
-        <section className="office-lobby" aria-label={t(locale, "office.lobby")}>
-          <div className="lobby-reception">
-            <strong>RECEPTION</strong>
-            <span>{t(locale, "office.reception")}</span>
-          </div>
-          <div className="lobby-entrance">
-            <strong>{layout.officeName}</strong>
-            <span>MAIN ENTRANCE</span>
-          </div>
-          <div className="lobby-elevators">
-            <strong>ELEVATOR</strong>
+        {/*
+          * Replaces the old lobby signboard: a live pulse for the floor. It counts people per presence state and
+          * how many rooms are busy, which is what the decorative RECEPTION / ENTRANCE / ELEVATOR panel never showed.
+        */}
+        <section className="office-pulse" aria-label={t(locale, "office.pulse")}>
+          <ul className="office-pulse-list">
+            {(["online", "idle", "dnd", "offline"] as const).map((state) => (
+              <li key={state} data-presence={state}>
+                <i aria-hidden="true" />
+                <span>{localized(PRESENCE_LABELS[state], locale)}</span>
+                <b>{members.filter(({ presence }) => presence === state).length}</b>
+              </li>
+            ))}
+          </ul>
+          <div className="office-pulse-live" data-live={lively ? "true" : "false"}>
             <i aria-hidden="true" />
-            <i aria-hidden="true" />
+            <span>{localized(lively ? COPY.badgeLive : COPY.badgeQuiet, locale)}</span>
+            <b>{rooms.filter(({ live }) => live).length} / {ROOM_ZONES.length}</b>
           </div>
         </section>
 
