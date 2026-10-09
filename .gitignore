@@ -1,5 +1,6 @@
 node_modules/
 dist/
+.commandcode/
 *.local
 .gstack/
 /agents

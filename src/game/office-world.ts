@@ -608,6 +608,24 @@ export type OfficeSeat = OfficePoint & { readonly facing: "up" | "down" | "left"
 /** Every room a Discord binding can fill, in slot order: the five work rooms, then the four amenity rooms. */
 export const ROOM_ZONES: readonly (WorkspaceZone | AmenityZone)[] = [...WORKSPACE_ZONES, ...AMENITY_ZONES];
 
+export type RoomZoneId = WorkspaceZone["id"] | AmenityZone["id"];
+
+/**
+ * Flat color for each room's name plate. Kept apart from the zone accent, which tints the room floor,
+ * its strip tab, and its glow; the plate is a sign and reads on its own.
+ */
+export const ZONE_TAG_COLORS: Record<RoomZoneId, string> = {
+  planning: "#f9c850",
+  analysis: "#a3b9c0",
+  design: "#c298a1",
+  implementation: "#ac9fbd",
+  monitoring: "#a4c1a6",
+  library: "#89939d",
+  cafe: "#dc8352",
+  lounge: "#9f91a4",
+  dining: "#98a289",
+};
+
 const AMENITY_FACING = ["up", "left", "right", "up"] as const;
 /** Extra seats are laid out on a staggered grid this far apart, so nameplates do not stack on each other. */
 const SEAT_COL_STEP = 3;

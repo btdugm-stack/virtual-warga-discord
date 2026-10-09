@@ -450,18 +450,39 @@ p {
   transform: translateY(-3px);
 }
 
+/* The label layer is above the furniture and agent layers, so nothing on the floor can cover a room name. */
+.office-zone-label-layer {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+  pointer-events: none;
+}
+
+.office-zone-label {
+  position: absolute;
+  left: var(--world-x);
+  top: var(--world-y);
+  width: var(--world-w);
+  height: var(--world-h);
+  pointer-events: none;
+}
+
 .office-zone-heading {
   position: absolute;
-  z-index: 4;
-  top: -7px;
-  left: 10px;
+  z-index: 1;
+  /* Places 75% of the plate above the room's top edge and 25% inside it. */
+  top: 0;
+  left: 18px;
+  translate: 0 -75%;
+  scale: var(--zoom-counter, 1);
+  transform-origin: left top;
   display: flex;
   gap: 6px;
   align-items: center;
   max-width: calc(100% - 20px);
   padding: 4px 8px;
   border: 2px solid var(--office-wall-dark);
-  background: color-mix(in srgb, var(--zone-accent) 86%, var(--color-cream));
+  background: var(--zone-tag);
   box-shadow: 3px 3px 0 color-mix(in srgb, var(--office-wall-dark) 72%, transparent);
   color: var(--color-ink);
   font-size: 10px;
@@ -643,27 +664,8 @@ p {
   animation: world-agent-walk 0.42s steps(1, end) infinite;
 }
 
-.world-agent[data-resting="true"] .world-agent-identity {
-  scale: calc(var(--label-counter, 1) * 1.2);
-  transform-origin: center bottom;
-}
-
-.office-world.office-crowded .world-agent[data-resting="true"] .world-agent-identity {
-  scale: calc(var(--label-counter, 1) * 1.48);
-}
-
 .world-agent[data-edge-seat="true"] .world-agent-identity {
   translate: -50% 10px;
-}
-
-.zone-library .office-zone-heading,
-.zone-cafe .office-zone-heading {
-  top: calc(100% + 32px);
-}
-
-.zone-lounge .office-zone-heading,
-.zone-dining .office-zone-heading {
-  top: -28px;
 }
 
 .world-agent[data-resting="true"]::before {
@@ -753,15 +755,14 @@ p {
   white-space: nowrap;
 }
 
+/* Hangs off the plate's bottom-right corner, the way the level badge hangs off the top-right. */
 .world-agent-status {
   position: absolute;
-  z-index: 5;
-  top: 3px;
-  left: calc(100% + 1px);
-  min-width: 44px;
-  padding: 4px 6px;
+  right: -9px;
+  bottom: -9px;
+  padding: 1px 4px;
   border: 2px solid var(--color-ink);
-  border-radius: 9px 9px 9px 2px;
+  border-radius: 6px;
   background: var(--color-amber);
   box-shadow: 2px 2px 0 color-mix(in srgb, var(--color-shadow) 45%, transparent);
   color: var(--color-ink);
@@ -803,7 +804,8 @@ p {
 
 .world-agent-bubble[data-on="true"] {
   opacity: 1;
-  scale: var(--label-counter, 1);
+  /* The 0.62 matches the close-up camera, so a bubble reads the same on the whole floor and when zoomed in. */
+  scale: calc(var(--label-counter, 1) * 0.62);
 }
 
 .world-agent-bubble::after {
@@ -1250,7 +1252,7 @@ body {
 
 .office-world-body {
   
-  --lobby-h: 122px;
+  --pulse-h: 48px;
   position: relative;
   display: flex;
   flex: 1 1 auto;
@@ -1267,98 +1269,98 @@ body {
 .office-world-stage {
   flex: 0 0 auto;
   
-  width: min(100%, max(560px, calc((100cqh - var(--lobby-h)) * 72 / 30)));
+  width: min(100%, max(560px, calc((100cqh - var(--pulse-h)) * 72 / 30)));
   margin-inline: auto;
   background: var(--office-floor);
 }
 
-.office-lobby {
+.office-pulse {
   position: relative;
-  display: grid;
-  
+  display: flex;
   flex: 0 0 auto;
-  grid-template-columns: 0.9fr 1.2fr 1fr;
-  gap: 6%;
-  align-items: end;
-  
-  height: var(--lobby-h);
-  min-height: 104px;
-  overflow: hidden;
-  padding: 28px 7% 14px;
-  border-top: 4px solid var(--office-wall-dark);
-  background-color: var(--office-wall);
-  background-image:
-    linear-gradient(180deg, transparent 0 70%, color-mix(in srgb, var(--office-floor) 86%, var(--office-rug)) 70%),
-    var(--office-wall-asset);
-  background-size: auto, 32px 32px;
-  
-  background-blend-mode: normal, multiply;
-  box-shadow: inset 0 -3px var(--office-wall-dark);
+  align-items: center;
+  gap: 8px 18px;
+  height: var(--pulse-h);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 14px;
+  border-block: 6px solid var(--office-wall-dark);
+  background: var(--office-surface);
+  box-shadow: inset 0 -4px 0 color-mix(in srgb, var(--office-wall-dark) 22%, transparent);
   color: var(--office-ink);
-  pointer-events: none;
 }
 
-.office-lobby > div {
-  position: relative;
-  z-index: 2;
-  min-height: 58px;
-  border: 3px solid var(--office-wall-dark);
-  background: color-mix(in srgb, var(--office-surface) 88%, var(--office-rug));
-  box-shadow: 5px 5px 0 color-mix(in srgb, var(--office-wall-dark) 55%, transparent);
-  text-align: center;
+.office-pulse-list {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.office-lobby strong {
-  display: block;
-  padding: 5px 6px 2px;
-  overflow: hidden;
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.office-lobby span {
-  display: block;
-  font-size: 8px;
-  font-weight: 800;
-}
-
-.office-lobby > .lobby-entrance {
-  min-height: 76px;
-  background:
-    linear-gradient(90deg, transparent 48%, var(--office-wall-dark) 48% 52%, transparent 52%),
-    color-mix(in srgb, var(--color-focus) 28%, var(--office-surface));
-}
-
-.lobby-elevators {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+.office-pulse li,
+.office-pulse-live {
+  display: flex;
+  align-items: center;
   gap: 5px;
-  padding: 0 7px 7px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
-.lobby-elevators strong {
-  grid-column: 1 / -1;
+.office-pulse b {
+  font-size: 12px;
+  font-weight: 950;
 }
 
-.lobby-elevators i {
-  height: 35px;
-  border: 3px solid var(--office-wall-dark);
-  background:
-    linear-gradient(90deg, transparent 47%, var(--office-wall-dark) 47% 53%, transparent 53%),
-    color-mix(in srgb, var(--office-wall-dark) 18%, var(--office-surface));
+.office-pulse li i,
+.office-pulse-live i {
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--color-green);
+  border-radius: 50%;
+  background: var(--color-green);
+}
+
+.office-pulse li[data-presence="idle"] i {
+  border-color: var(--color-amber);
+  background: linear-gradient(90deg, var(--color-amber) 50%, transparent 50%);
+}
+
+.office-pulse li[data-presence="dnd"] i {
+  border-color: var(--color-red);
+  background: linear-gradient(transparent 35%, var(--color-red) 35% 65%, transparent 65%);
+}
+
+.office-pulse li[data-presence="offline"] i {
+  border-color: var(--color-muted);
+  background: transparent;
+}
+
+.office-pulse-live {
+  margin-left: auto;
+}
+
+.office-pulse-live i {
+  border-color: var(--color-muted);
+  background: var(--color-muted);
+}
+
+.office-pulse-live[data-live="true"] i {
+  border-color: var(--color-green);
+  background: var(--color-green);
+  animation: dot-pulse 1.3s ease-in-out infinite;
 }
 
 @container (max-height: 355px) {
-  .office-lobby {
+  .office-pulse {
     display: none;
   }
 
   
   .office-world-stage {
-    --lobby-h: 0px;
+    --pulse-h: 0px;
   }
 }
 
@@ -1412,13 +1414,11 @@ body {
   will-change: transform;
 }
 
-.office-world-camera[data-compact="true"] .world-agent-identity,
-.office-world-camera[data-compact="true"] .world-agent-status {
+.office-world-camera[data-compact="true"] .world-agent-identity {
   opacity: 0;
 }
 
-.world-agent-identity,
-.world-agent-status {
+.world-agent-identity {
   scale: var(--label-counter, 1);
   transform-origin: center bottom;
   transition: opacity 0.18s ease;
@@ -1522,6 +1522,10 @@ body {
 
 .office-world-stage.camera-pannable {
   cursor: grab;
+}
+
+/* The camera owns pinch-to-zoom, so the stage takes its touch gestures whenever the editor is closed. */
+.office-world-stage:not(.editing) {
   touch-action: none;
 }
 
@@ -1578,6 +1582,11 @@ body {
 .world-agent-select:focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
+}
+
+/* The walk loop sets each character's z-index inline, so the open profile needs !important to clear them. */
+.world-agent.agent-selected {
+  z-index: 9999 !important;
 }
 
 .world-agent-popover {

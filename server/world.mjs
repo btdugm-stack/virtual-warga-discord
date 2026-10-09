@@ -15,14 +15,14 @@ export const CORRIDOR = SLOT_COUNT;
 /** People sent per room. The floor has fewer seats than a big server has members; the rest become "+N". */
 export const ROOM_CAP = 24;
 /** How long "Sedang Gibah di #channel" stays over someone's head after their last message. */
-export const CHAT_BUBBLE_MS = 60_000;
+export const CHAT_BUBBLE_MS = 6_000;
 /** How long a chatter stays in a text-channel room after their last message. */
-export const CHAT_ROOM_MS = 5 * 60_000;
+export const CHAT_ROOM_MS = 2 * 60_000;
 /** One feed line per person per channel in this window, so a fast conversation does not flood the feed. */
-const CHAT_FEED_GAP_MS = 3 * 60_000;
+const CHAT_FEED_GAP_MS = 2 * 60_000;
 const FEED_MAX = 60;
 /** Discord shows "is typing" for about this long after the last keystroke it reports. */
-const TYPING_MS = 10_000;
+const TYPING_MS = 3_000;
 /** How long a reaction's emoji is kept for the office to float over the member's head. */
 const REACTION_MS = 6_000;
 /** How long a character keeps doing an emote. */
