@@ -50,16 +50,19 @@ const labelFor = (key) => (key === "whole" ? namedWhole : named);
 
 const idsOf = (key) => (key === "accessories" ? ACCESSORIES : key === "whole" ? WHOLES : PARTS.find((part) => part.key === key).ids);
 
-/** `karakter:<action>:<section>:<look code>:<photo><activity>`, the last two as 0 or 1. */
-const customId = (action, draft) => [PREFIX, action, draft.section, codeOf(draft.spec), `${draft.photo ? 1 : 0}${draft.activity ? 1 : 0}`].join(":");
+/** `karakter:<action>:<section>:<look code>:<listed><photo><activity>`, the last three as 0 or 1. */
+const customId = (action, draft) => [PREFIX, action, draft.section, codeOf(draft.spec), `${draft.listed ? 1 : 0}${draft.photo ? 1 : 0}${draft.activity ? 1 : 0}`].join(":");
 
 function parseCustomId(id) {
   const [prefix, action, section, code, switches = ""] = id.split(":");
   if (prefix !== PREFIX) return null;
   if (action === "cancel") return { action, draft: null };
   const spec = specOf(code);
-  if (!spec || !SECTIONS[Number(section)] || !/^[01]{2}$/.test(switches)) throw new Error("Invalid draft");
-  return { action, draft: { spec, section: Number(section), photo: switches[0] === "1", activity: switches[1] === "1" } };
+  if (!spec || !SECTIONS[Number(section)] || !/^[01]{3}$/.test(switches)) throw new Error("Invalid draft");
+  return {
+    action,
+    draft: { spec, section: Number(section), listed: switches[0] === "1", photo: switches[1] === "1", activity: switches[2] === "1" },
+  };
 }
 
 function chosenText(spec, key, none) {
@@ -72,6 +75,7 @@ function summary(draft) {
   const lines = SECTIONS
     .filter(({ key }) => !draft.spec.whole || key === "whole")
     .map(({ key, label, none }) => `**${label}:** ${chosenText(draft.spec, key, none)}`);
+  lines.push(`**Tampil di peta publik:** ${draft.listed ? "nama dan statusmu ditampilkan" : "hanya karaktermu, tanpa nama"}`);
   lines.push(`**Foto profil:** ${draft.photo ? "dipakai sebagai wajah (menutupi mata karakter)" : "tidak dipakai"}`);
   lines.push(`**Aktivitas:** ${draft.activity ? "game atau musik yang sedang kamu buka ikut ditampilkan" : "tidak ditampilkan"}`);
   return lines.join("\n");
@@ -139,10 +143,11 @@ export function pickerMessage(draft, siteUrl = null) {
           { type: ComponentType.Button, style: ButtonStyle.Secondary, label: "Batal", custom_id: `${PREFIX}:cancel` },
         ],
       },
-      // A row holds five buttons at most; the second switch gets its own.
+      // A row holds five buttons at most; the switches get their own.
       {
         type: ComponentType.ActionRow,
         components: [
+          button("listed", draft.listed ? "Peta publik: tampil" : "Peta publik: anonim"),
           button("activity", draft.activity ? "Aktivitas: ditampilkan" : "Aktivitas: tidak ditampilkan"),
           // The same choices with pictures to click, on the site. The link signs this member in there, once.
           ...(siteUrl ? [{ type: ComponentType.Button, style: ButtonStyle.Link, label: "Rakit di situs", url: siteUrl }] : []),
@@ -207,7 +212,7 @@ export async function handleKarakter(interaction, characters, onApplied, siteLin
     case "apply": {
       // Applying the automatic look saves nothing, so it keeps following the kit if the kit changes.
       const automatic = codeOf(draft.spec) === codeOf(characters.automatic(userId));
-      characters.update(userId, { spec: automatic ? null : draft.spec, photo: draft.photo, activity: draft.activity });
+      characters.update(userId, { spec: automatic ? null : draft.spec, listed: draft.listed, photo: draft.photo, activity: draft.activity });
       onApplied();
       await interaction.editReply(appliedMessage(draft));
       return true;
@@ -226,6 +231,9 @@ export async function handleKarakter(interaction, characters, onApplied, siteLin
       return true;
     case "auto":
       await interaction.editReply(picker({ ...draft, spec: characters.automatic(userId) }));
+      return true;
+    case "listed":
+      await interaction.editReply(picker({ ...draft, listed: !draft.listed }));
       return true;
     case "photo":
       await interaction.editReply(picker({ ...draft, photo: !draft.photo }));

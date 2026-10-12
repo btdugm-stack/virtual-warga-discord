@@ -106,13 +106,17 @@ export const COPY = {
     "Menu pertama memilih bagian yang diubah: kulit, mata, gaya rambut, warna rambut, atasan, bawahan, sepatu, topi, atau aksesori (sampai tiga). Menu kedua memilih isinya. Acak membuat karakter baru secara acak, Bawaan mengembalikan karakter otomatismu.",
     "The first menu chooses the part to change: skin, eyes, hair style, hair color, top, bottom, shoes, hat, or accessories (up to three). The second menu chooses what goes there. Acak makes a new character at random, Bawaan brings back your automatic one.",
   ),
+  guideListed: both(
+    "Secara bawaan kamu tampil anonim di peta: hanya karaktermu, tanpa nama, status, atau level. Nyalakan tombol Peta publik di perakit (atau di tautan /karakter) untuk menampilkan namamu.",
+    "By default you appear anonymously on the map: only your character, with no name, status, or level. Turn on the Peta publik switch in the builder (or in the /karakter picker) to show your name.",
+  ),
   guidePhoto: both(
-    "Foto profil Discord-mu tidak ditampilkan, kecuali kamu menyalakannya lewat tombol Foto profil. Foto itu lalu dipakai sebagai wajah karakter dan hanya menutupi wajah, jadi rambut dan topi tetap terlihat.",
-    "Your Discord profile picture is not shown unless you turn it on with the Foto profil button. It is then worn as the character's face and covers the face only, so hair and hat stay visible.",
+    "Selama peta publik menyala, foto profil Discord-mu masih tidak ditampilkan kecuali kamu menyalakannya lewat tombol Foto profil. Foto itu lalu dipakai sebagai wajah karakter dan hanya menutupi wajah, jadi rambut dan topi tetap terlihat.",
+    "While you are listed, your Discord profile picture is still not shown unless you turn it on with the Foto profil button. It is then worn as the character's face and covers the face only, so hair and hat stay visible.",
   ),
   guideActivity: both(
-    "Game, musik, atau tontonan yang sedang kamu buka juga tidak ditampilkan, kecuali kamu menyalakannya lewat tombol Aktivitas. Yang tampil hanya nama game atau aplikasinya.",
-    "The game, music, or video you have open is not shown either unless you turn it on with the Aktivitas button. Only the name of the game or app is shown.",
+    "Begitu juga game, musik, atau tontonan yang sedang kamu buka: tidak ditampilkan kecuali kamu menyalakannya lewat tombol Aktivitas. Yang tampil hanya nama game atau aplikasinya.",
+    "The game, music, or video you have open is the same: not shown unless you turn it on with the Aktivitas button. Only the name of the game or app is shown.",
   ),
   guideEmote: both(
     "Ketik /emote untuk membuat karaktermu melambai, joget, melompat, berputar, atau membaca selama beberapa detik.",
@@ -135,6 +139,8 @@ export const COPY = {
   builderNone: both("Tanpa", "None"),
   builderAssembled: both("Rakit sendiri", "Assembled"),
   builderAccessories: both("Pilih sampai {max} aksesori. Klik lagi untuk melepas.", "Pick up to {max} accessories. Click again to take one off."),
+  builderListOn: both("Peta publik: tampil", "Public map: listed"),
+  builderListOff: both("Peta publik: anonim", "Public map: anonymous"),
   builderPhotoOn: both("Foto profil: dipakai", "Profile picture: worn"),
   builderPhotoOff: both("Foto profil: tidak dipakai", "Profile picture: not worn"),
   builderActivityOn: both("Aktivitas: ditampilkan", "Activity: shown"),

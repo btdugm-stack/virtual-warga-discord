@@ -1,7 +1,8 @@
 /**
- * What each member chose with the `/karakter` command: the parts of their character, whether their Discord
- * profile picture is worn as the face, and whether what they are playing or listening to is shown. The last
- * two are off unless the member turns them on, since the site is public.
+ * What each member chose with the `/karakter` command: the parts of their character, whether they are shown
+ * on the public map at all, whether their Discord profile picture is worn as the face, and whether what they
+ * are playing or listening to is shown. All three are off unless the member turns them on, since the site is
+ * public: without `listed` a member is drawn anonymously, and `photo` and `activity` do nothing.
  * One JSON file keyed by Discord user id; it never leaves the server.
  * Someone who has chosen nothing gets a character derived from their id, the same on every start.
  */
@@ -22,7 +23,7 @@ function hashOf(text) {
 export class CharacterStore {
   constructor(file) {
     this.file = file;
-    /** Only what differs from automatic is kept. @type {Map<string, {spec?: object, photo?: boolean, activity?: boolean}>} */
+    /** Only what differs from automatic is kept. @type {Map<string, {spec?: object, listed?: boolean, photo?: boolean, activity?: boolean}>} */
     this.choices = new Map();
     try {
       const saved = JSON.parse(fs.readFileSync(file, "utf8"));
@@ -33,6 +34,7 @@ export class CharacterStore {
         // A ready-made character that was renamed or removed falls back to the parts chosen underneath it.
         const spec = checkedSpec(raw.spec) ?? checkedSpec({ ...raw.spec, whole: null });
         if (spec) choice.spec = spec;
+        if (raw.listed === true) choice.listed = true;
         if (raw.photo === true) choice.photo = true;
         if (raw.activity === true) choice.activity = true;
         if (Object.keys(choice).length) this.choices.set(userId, choice);
@@ -48,18 +50,24 @@ export class CharacterStore {
   }
 
   /**
-   * The member's choices in full: their chosen parts or the automatic ones, and the two switches
-   * (`photo`, `activity`), which are on only if they turned them on.
+   * The member's choices in full: their chosen parts or the automatic ones, and the three switches
+   * (`listed`, `photo`, `activity`), which are on only if they turned them on.
    */
   look(userId) {
     const saved = this.choices.get(userId);
-    return { spec: saved?.spec ?? this.automatic(userId), photo: saved?.photo ?? false, activity: saved?.activity ?? false };
+    return {
+      spec: saved?.spec ?? this.automatic(userId),
+      listed: saved?.listed ?? false,
+      photo: saved?.photo ?? false,
+      activity: saved?.activity ?? false,
+    };
   }
 
   /** Replace the member's choice. A `spec` of null puts the character back to automatic. */
-  update(userId, { spec, photo, activity }) {
+  update(userId, { spec, listed, photo, activity }) {
     const saved = {};
     if (spec) saved.spec = spec;
+    if (listed === true) saved.listed = true;
     if (photo === true) saved.photo = true;
     if (activity === true) saved.activity = true;
     if (Object.keys(saved).length) this.choices.set(userId, saved);

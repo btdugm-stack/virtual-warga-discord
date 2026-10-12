@@ -14,6 +14,8 @@ export const SLOT_COUNT = 9;
 export const CORRIDOR = SLOT_COUNT;
 /** People sent per room. The floor has fewer seats than a big server has members; the rest become "+N". */
 export const ROOM_CAP = 24;
+/** The name an unlisted member is drawn under: they are on the map, but nobody can tell who they are. */
+export const ANON_NAME = "Warga";
 /** How long "Sedang Gibah di #channel" stays over someone's head after their last message. */
 export const CHAT_BUBBLE_MS = 6_000;
 /** How long a chatter stays in a text-channel room after their last message. */
@@ -114,7 +116,7 @@ export class World {
     let user = this.users.get(userId);
     if (status === "offline") {
       if (!user) return;
-      if (!silent && user.announced !== "offline" && this.#userRelevant(user)) this.#log("offline", user.name);
+      if (!silent && user.announced !== "offline" && this.#userRelevant(user)) this.#log("offline", userId, user.name);
       // Offline members stay known: they wait in the AFK room until they come back.
       // Forget their last chat, or they would linger in that channel's room for minutes after leaving.
       this.chats.delete(userId);
@@ -134,7 +136,7 @@ export class World {
     user.guilds.add(guildId);
     if (silent) user.announced = status;
     else if (user.announced !== status && this.#userRelevant(user)) {
-      this.#log(status, user.name);
+      this.#log(status, userId, user.name);
       user.announced = status;
     }
     this.onChange();
@@ -216,8 +218,8 @@ export class World {
     if (channelId) this.voice.set(userId, { guildId, channelId, state });
     else this.voice.delete(userId);
     if (!silent && this.relevant.has(guildId)) {
-      if (channelId) this.#log(previous ? "voice_move" : "voice_join", user.name, this.#channelName(guildId, channelId));
-      else if (previous) this.#log("voice_leave", user.name, this.#channelName(previous.guildId, previous.channelId));
+      if (channelId) this.#log(previous ? "voice_move" : "voice_join", userId, user.name, this.#channelName(guildId, channelId));
+      else if (previous) this.#log("voice_leave", userId, user.name, this.#channelName(previous.guildId, previous.channelId));
     }
     this.onChange();
   }
@@ -230,7 +232,7 @@ export class World {
     const feedKey = `${userId}:${channelId}`;
     if (this.relevant.has(guildId) && now - (this.chatFeedAt.get(feedKey) ?? 0) > CHAT_FEED_GAP_MS) {
       this.chatFeedAt.set(feedKey, now);
-      this.#log("chat", user.name, this.#channelName(guildId, channelId));
+      this.#log("chat", userId, user.name, this.#channelName(guildId, channelId));
     }
     this.onChange();
   }
@@ -281,6 +283,8 @@ export class World {
    * of theirs. An active member of a shown server whom none of that places stands in the corridor: with only
    * channels bound, that is everyone who is online but not in one of them right now.
    * Offline members are shown only in the AFK room; without one they are not shown at all.
+   * A member is only named and shown with their presence if they listed themselves; everyone else is drawn
+   * as an anonymous character under ANON_NAME, placed by their server or the corridor.
    */
   snapshot(slots, publicId, profileOf = () => ({}), now = Date.now()) {
     const voiceRoom = new Map();
@@ -316,8 +320,14 @@ export class World {
     // One list per room, and one more for the corridor.
     const seated = Array.from({ length: rooms.length + 1 }, () => []);
     for (const [userId, user] of this.users) {
-      const voice = this.voice.get(userId);
-      const chat = this.chats.get(userId);
+      // The member's own switch for being on the public map. Without it they are drawn anonymously: no name,
+      // no presence, and no live signal. Demo members are invented, so they are always listed.
+      const { sharesActivity = false, sharesProfile = false, ...look } = profileOf(userId);
+      const anonymous = !sharesProfile;
+      // An unlisted member is placed by their server or the corridor only, so their room never betrays the
+      // voice channel they are in or the channel they wrote in.
+      const voice = anonymous ? undefined : this.voice.get(userId);
+      const chat = anonymous ? undefined : this.chats.get(userId);
       const chatting = chat && now - chat.at < CHAT_ROOM_MS ? chat : undefined;
       // "Offline" while in voice or just after writing is someone invisible; they are placed like anyone active.
       const gone = user.status === "offline" && !voice && !chatting;
@@ -338,23 +348,21 @@ export class World {
       const chatName = chatting && now - chatting.at < CHAT_BUBBLE_MS && this.relevant.has(chatting.guildId)
         ? this.#channelName(chatting.guildId, chatting.channelId)
         : null;
-      const typing = this.typing.get(userId);
-      const reaction = this.reactions.get(userId);
-      // `sharesActivity` is the member's own switch; the rest of the profile is how they look.
-      const { sharesActivity = false, ...look } = profileOf(userId);
+      const typing = anonymous ? undefined : this.typing.get(userId);
+      const reaction = anonymous ? undefined : this.reactions.get(userId);
       seated[room].push({
         id: publicId(userId),
-        name: user.name,
-        presence: user.status,
+        name: anonymous ? ANON_NAME : user.name,
+        presence: anonymous ? "offline" : user.status,
         room,
-        voice: voiceName,
-        voiceState: voiceName ? voice.state : null,
-        chat: chatName,
-        typing: typing && !chatName && this.relevant.has(typing.guildId) ? this.#channelName(typing.guildId, typing.channelId) : null,
-        reaction: reaction ?? null,
-        emote: this.emotes.get(userId) ?? null,
+        voice: anonymous ? null : voiceName,
+        voiceState: anonymous ? null : voiceName ? voice.state : null,
+        chat: anonymous ? null : chatName,
+        typing: anonymous ? null : typing && !chatName && this.relevant.has(typing.guildId) ? this.#channelName(typing.guildId, typing.channelId) : null,
+        reaction: anonymous ? null : reaction ?? null,
+        emote: anonymous ? null : this.emotes.get(userId) ?? null,
         activity: sharesActivity && user.status !== "offline" ? user.activity ?? null : null,
-        level: this.#levelOf(userId, user),
+        level: anonymous ? null : this.#levelOf(userId, user),
         ...look,
         rank: voiceName ? 0 : chatName ? 1 : STATUS_RANK[user.status] ?? 5,
       });
@@ -379,7 +387,9 @@ export class World {
       botName: this.botName,
       rooms,
       members,
-      feed: this.feed,
+      // A feed line keeps the name of whoever it is about, so an unlisted member's line is drawn under the
+      // anonymous name too; `userId` is only for this and never leaves.
+      feed: this.feed.map(({ userId, ...entry }) => (profileOf(userId).sharesProfile ? entry : { ...entry, name: ANON_NAME })),
     };
   }
 
@@ -415,8 +425,9 @@ export class World {
     return this.guilds.get(guildId)?.channels.get(channelId)?.name ?? "?";
   }
 
-  #log(kind, name, where = "") {
+  #log(kind, userId, name, where = "") {
     this.feedSeq += 1;
-    this.feed = [{ id: this.feedSeq, at: new Date().toISOString(), kind, name, where }, ...this.feed].slice(0, FEED_MAX);
+    // `userId` lets the snapshot hide the name of a member who has not listed themselves.
+    this.feed = [{ id: this.feedSeq, at: new Date().toISOString(), kind, userId, name, where }, ...this.feed].slice(0, FEED_MAX);
   }
 }

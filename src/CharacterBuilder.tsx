@@ -5,7 +5,7 @@ import type { CharacterSpec, Kit, Me, PartKey } from "./discord/types";
 import { localized, type Locale, type LocalizedText } from "./i18n";
 
 type SectionKey = PartKey | "accessories" | "whole";
-type Draft = { spec: CharacterSpec; photo: boolean; activity: boolean };
+type Draft = { spec: CharacterSpec; listed: boolean; photo: boolean; activity: boolean };
 
 /** `batik_shirt` → `Batik shirt`. The kit names its parts in English ids; this is all the labelling they get. */
 const named = (id: string) => (id.charAt(0).toUpperCase() + id.slice(1)).replaceAll("_", " ");
@@ -46,7 +46,7 @@ function randomSpec(kit: Kit): CharacterSpec {
  * around the office. Nothing is saved until "Terapkan". The server knows who this is from the session cookie.
  */
 export function CharacterBuilder({ kit, me, locale, onSignOut }: { kit: Kit; me: Me; locale: Locale; onSignOut: () => void }) {
-  const [draft, setDraft] = useState<Draft>({ spec: me.spec, photo: me.photo, activity: me.activity });
+  const [draft, setDraft] = useState<Draft>({ spec: me.spec, listed: me.listed, photo: me.photo, activity: me.activity });
   const [saved, setSaved] = useState(draft);
   const [section, setSection] = useState<SectionKey>("hair");
   const [busy, setBusy] = useState(false);
@@ -107,6 +107,9 @@ export function CharacterBuilder({ kit, me, locale, onSignOut }: { kit: Kit; me:
         </div>
         <p className="builder-name">{fill(COPY.builderFor, locale, { name: me.name })}</p>
         <div className="builder-switches">
+          <button aria-pressed={draft.listed} className="work-action" onClick={() => change({ listed: !draft.listed })} type="button">
+            {localized(draft.listed ? COPY.builderListOn : COPY.builderListOff, locale)}
+          </button>
           <button aria-pressed={draft.photo} className="work-action" onClick={() => change({ photo: !draft.photo })} type="button">
             {localized(draft.photo ? COPY.builderPhotoOn : COPY.builderPhotoOff, locale)}
           </button>

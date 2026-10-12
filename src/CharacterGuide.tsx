@@ -84,6 +84,7 @@ export function CharacterGuide({ locale, ticket, demo, onClose }: { locale: Loca
               <button className="work-action" onClick={() => void signIn(DEMO_TICKET)} type="button">{localized(COPY.signInDemo, locale)}</button>
             ) : null}
           </div>
+          <p className="settings-intro">{localized(COPY.guideListed, locale)}</p>
           <p className="settings-intro">{localized(COPY.guidePhoto, locale)}</p>
           <p className="settings-intro">{localized(COPY.guideActivity, locale)}</p>
           <p className="settings-intro">{localized(COPY.guideEmote, locale)}</p>

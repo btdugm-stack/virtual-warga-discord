@@ -35,6 +35,10 @@ export type EmoteKind = "lambai" | "joget" | "lompat" | "putar" | "baca";
 export type Member = {
   /** Not a Discord id: a per-run hash, stable only while the server stays up. */
   readonly id: string;
+  /**
+   * The display name, or `ANON_NAME` when the member has not listed themselves. Unlisted members arrive with
+   * a neutral name, `presence` "offline", and every live field below empty.
+   */
   readonly name: string;
   readonly presence: Presence;
   readonly room: number;
@@ -133,6 +137,8 @@ export type Kit = {
 export type Me = {
   readonly name: string;
   readonly spec: CharacterSpec;
+  /** The master switch: whether the member is shown on the public map at all. Off means they appear anonymously. */
+  readonly listed: boolean;
   readonly photo: boolean;
   readonly activity: boolean;
   /** The character they have without choosing. */

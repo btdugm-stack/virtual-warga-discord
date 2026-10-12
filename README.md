@@ -77,16 +77,19 @@ are saved, rooms are filled automatically, one server per room. A room has 12 to
 Each member's character is assembled from the character kit in `server/character-kit/`: 6 skin tones, 10
 eyes, 25 hair styles in 12 colors, 25 tops, 15 bottoms, 8 shoes, 12 hats, and 15 accessories (up to three
 at once). Without a choice the character is derived from the member and stays the same across restarts.
-A member can also wear their Discord profile picture as the face. That is off until they turn it on; it
-covers the face only, so hair and hat stay visible.
+A member is drawn on the public map anonymously unless they list themselves: their name, presence, and
+level appear only once they do. A member can also wear their Discord profile picture as the face. That is
+off until they turn it on; it covers the face only, so hair and hat stay visible.
 
 A member changes their own with the `/karakter` command in Discord. It opens a picker only they can see:
 
 - a picture of the character from the front, the back, and the side;
 - a menu choosing which part to change, and a menu with that part's options;
 - buttons: **Pakai** applies, **Acak** draws a random character, **Bawaan** brings back the automatic one,
-  **Foto profil** wears or drops the profile picture, **Aktivitas** shows or hides what they are playing or
-  listening to (off until turned on), **Batal** closes the picker.
+  **Peta publik** lists the member by name or hides them, **Foto profil** wears or drops the profile
+  picture, **Aktivitas** shows or hides what they are playing or listening to, **Batal** closes the picker.
+  Everything but the character itself is off until turned on: a member who is not listed is drawn
+  anonymously, with no profile picture and no activity.
 
 The same choices can be made on the site, with every option as a picture to click: the **Karakter** button
 opens the builder. The site has to know which Discord member is building, and there are two ways to tell it:
@@ -132,10 +135,10 @@ and serves the built site from `dist/`, so there is nothing else to deploy.
 - Set `DISCORD_TOKEN`, `ADMIN_PASSWORD`, and `PORT` as environment variables on the host, and serve it over HTTPS.
 - Room bindings, the furniture layout, and character choices are saved in `server/data/`. Keep that directory on persistent storage.
 - If a reverse proxy sits in front, it must not buffer `/api/events` (the live stream).
-- Everyone who opens the site sees the display names and activity of members in the shown servers. Tell
-  those servers' members before making it public. A profile picture, and what a member is playing or
-  listening to, are shown only for a member who turned them on in the `/karakter` picker. Discord user ids
-  are not sent to browsers.
+- Members appear on the map **anonymously by default**: only their character is drawn, with no name,
+  presence, or level. To be shown by name a member turns on **Tampil di peta publik** in the `/karakter`
+  picker (or in the site's builder). A profile picture, and what a member is playing or listening to, are
+  shown only once the member is listed and has turned those on too. Discord user ids are not sent to browsers.
 
 ## What's inside
 

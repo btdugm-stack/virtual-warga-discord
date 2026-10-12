@@ -86,26 +86,30 @@ const characters = new CharacterStore(path.join(path.dirname(CONFIG_FILE), "char
 /** Set once the Discord connection starts. Demo members have no profile pictures. */
 let avatarUrl = () => null;
 
-/** The profile picture this member wears, or null: they have none, or have not turned it on in the `/karakter` picker. */
+/** The profile picture this member wears, or null: they have none, are not listed, or have not turned it on in the `/karakter` picker. */
 function wornAvatar(userId) {
-  return characters.look(userId).photo ? avatarUrl(userId) : null;
+  const { listed, photo } = characters.look(userId);
+  return listed && photo ? avatarUrl(userId) : null;
 }
 
 /**
  * How a member looks, as sent to browsers. `look` is the code of their character; its sprite sheet is at
  * `/api/character/<look>.png`. `avatar` is not the picture's address (that contains the Discord id) but a
  * short tag that changes with the picture; the browser asks `/api/avatar/<public id>` for the image itself.
+ * `sharesProfile` is the member's own switch for appearing on the public map at all: without it the snapshot
+ * draws them anonymously. `photo` and `activity` only count once they are listed.
  */
 function profileOf(userId) {
   const url = wornAvatar(userId);
-  const { spec, activity } = characters.look(userId);
+  const { spec, listed, activity } = characters.look(userId);
   return {
     look: codeOf(spec),
     // A sheet drawn finer than the office's grid is scaled down, so it must not be drawn pixelated.
     ...(smoothSpec(spec) ? { smooth: true } : {}),
-    // Not sent on: tells the snapshot whether this member lets their game or music be shown.
+    // Not sent on: tells the snapshot whether this member is shown at all, and lets their activity show.
     // Demo members are invented, so there is nobody to ask.
-    sharesActivity: activity || world.demo,
+    sharesProfile: listed || world.demo,
+    sharesActivity: (listed && activity) || world.demo,
     avatar: url ? crypto.createHash("sha256").update(url).digest("base64url").slice(0, 8) : null,
   };
 }
@@ -354,7 +358,7 @@ async function handleApi(req, res, route) {
       if (spec === null && body?.spec !== null) throw new Error("Invalid character");
       // Like the picker in Discord: the automatic look is stored as "nothing chosen".
       const automatic = spec !== null && codeOf(spec) === codeOf(characters.automatic(userId));
-      characters.update(userId, { spec: automatic ? null : spec, photo: body?.photo === true, activity: body?.activity === true });
+      characters.update(userId, { spec: automatic ? null : spec, listed: body?.listed === true, photo: body?.photo === true, activity: body?.activity === true });
       world.touch();
     } else if (req.method !== "GET") {
       sendJson(res, 404, { error: "not_found" });
